@@ -51,4 +51,4 @@ offset = 1 + result[0]
 address = result[offset + 1 : offset + 1 + result[offset]]
 
 print "Public key " + str(result[1 : 1 + result[0]]).encode('hex')
-print "Address 0x" + str(address)
+print "Address " + str(address)

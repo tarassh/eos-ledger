@@ -807,9 +807,15 @@ uint32_t set_result_get_publicKey() {
     G_io_apdu_buffer[tx++] = 65;
     os_memmove(G_io_apdu_buffer + tx, tmpCtx.publicKeyContext.publicKey.W, 65);
     tx += 65;
-    G_io_apdu_buffer[tx++] = 40;
-    os_memmove(G_io_apdu_buffer + tx, tmpCtx.publicKeyContext.address, 40);
-    tx += 40;
+
+    uint32_t addressLength = sizeof(tmpCtx.publicKeyContext.address);
+    while (tmpCtx.publicKeyContext.address[addressLength - 1] == 0) {
+        addressLength--;
+    }
+
+    G_io_apdu_buffer[tx++] = addressLength;
+    os_memmove(G_io_apdu_buffer + tx, tmpCtx.publicKeyContext.address, addressLength);
+    tx += addressLength;
     if (tmpCtx.publicKeyContext.getChaincode) {
         os_memmove(G_io_apdu_buffer + tx, tmpCtx.publicKeyContext.chainCode,
                    32);
@@ -828,6 +834,7 @@ void keyToWIF(cx_ecfp_public_key_t *publicKey, uint8_t *out, uint8_t size) {
     cx_hash_sha256(temp, 33, check, 32);
     os_memmove(temp + 33, check, 4);
 
+    os_memset(out, 0, size);
     out[0] = 'E';
     out[1] = 'O';
     out[2] = 'S';
@@ -835,7 +842,6 @@ void keyToWIF(cx_ecfp_public_key_t *publicKey, uint8_t *out, uint8_t size) {
     if (addressLen + 3 >= size) {
         THROW(0x6C00);
     }
-    *(temp + 3 + addressLen) = '\0';
 }
 
 void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t *dataBuffer,

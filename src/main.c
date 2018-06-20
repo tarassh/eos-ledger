@@ -830,8 +830,10 @@ void keyToWIF(cx_ecfp_public_key_t *publicKey, uint8_t *out, uint8_t size) {
     temp[0] = 0x02;
     os_memmove(temp + 1, publicKey->W + 1, 32);
 
-    uint8_t check[32];
-    cx_hash_sha256(temp, 33, check, 32);
+    uint8_t check[20];
+    cx_ripemd160_t riprip;
+    cx_ripemd160_init(&riprip);
+    cx_hash(&riprip.header, CX_LAST, temp, 33, check, 20);
     os_memmove(temp + 33, check, 4);
 
     os_memset(out, 0, size);

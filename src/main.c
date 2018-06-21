@@ -50,6 +50,7 @@ unsigned int io_seproxyhal_touch_signMessage_cancel(const bagl_element_t *e);
 void ui_idle(void);
 
 uint32_t set_result_get_publicKey(void);
+uint8_t public_key_to_wif(cx_ecfp_public_key_t *publicKey, uint8_t *out, uint8_t size);
 
 #define MAX_BIP32_PATH 10
 
@@ -57,7 +58,6 @@ uint32_t set_result_get_publicKey(void);
 #define INS_GET_PUBLIC_KEY 0x02
 #define INS_SIGN 0x04
 #define INS_GET_APP_CONFIGURATION 0x06
-#define INS_SIGN_PERSONAL_MESSAGE 0x08
 #define P1_CONFIRM 0x01
 #define P1_NON_CONFIRM 0x00
 #define P2_NO_CHAINCODE 0x00
@@ -98,14 +98,8 @@ union {
     messageSigningContext_t messageSigningContext;
 } tmpCtx;
 
-union {
-    cx_sha256_t sha2;
-} tmpContent;
-
-cx_sha3_t sha3;
 // volatile uint8_t dataAllowed;
 // volatile uint8_t fidoTransport;
-volatile char addressSummary[32];
 volatile char fullAddress[60];
 volatile char fullAmount[50];
 volatile char maxFee[50];
@@ -134,18 +128,6 @@ typedef struct internalStorage_t {
 WIDE internalStorage_t N_storage_real;
 #define N_storage (*(WIDE internalStorage_t *)PIC(&N_storage_real))
 
-const unsigned char hex_digits[] = {'0', '1', '2', '3', '4', '5', '6', '7',
-                                    '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
-
-void array_hexstr(char *strbuf, const void *bin, unsigned int len) {
-    while (len--) {
-        *strbuf++ = hex_digits[((*((char *)bin)) >> 4) & 0xF];
-        *strbuf++ = hex_digits[(*((char *)bin)) & 0xF];
-        bin = (const void *)((unsigned int)bin + 1);
-    }
-    *strbuf = 0; // EOS
-}
-
 #ifdef HAVE_U2F
 
 void u2f_proxy_response(u2f_service_t *service, unsigned int tx) {
@@ -164,14 +146,6 @@ const bagl_element_t *ui_menu_item_out_over(const bagl_element_t *e) {
     e = (const bagl_element_t *)(((unsigned int)e) + sizeof(bagl_element_t));
     return e;
 }
-
-#define BAGL_FONT_OPEN_SANS_LIGHT_16_22PX_AVG_WIDTH 10
-#define BAGL_FONT_OPEN_SANS_REGULAR_10_13PX_AVG_WIDTH 8
-#define MAX_CHAR_PER_LINE 25
-
-#define COLOR_BG_1 0xF9F9F9
-#define COLOR_APP 0x0ebdcf
-#define COLOR_APP_LIGHT 0x87dee6
 
 const ux_menu_entry_t menu_main[];
 const ux_menu_entry_t menu_settings[];
@@ -824,7 +798,7 @@ uint32_t set_result_get_publicKey() {
     return tx;
 }
 
-void keyToWIF(cx_ecfp_public_key_t *publicKey, uint8_t *out, uint8_t size) {
+uint8_t public_key_to_wif(cx_ecfp_public_key_t *publicKey, uint8_t *out, uint8_t size) {
     uint8_t temp[37];
     uint8_t addressLen = 0;
     temp[0] = 0x02;
@@ -840,10 +814,11 @@ void keyToWIF(cx_ecfp_public_key_t *publicKey, uint8_t *out, uint8_t size) {
     out[0] = 'E';
     out[1] = 'O';
     out[2] = 'S';
-    addressLen = public_key_to_encoded_base58(temp, sizeof(temp), out + 3, size - 3);
+    addressLen = buffer_to_encoded_base58(temp, sizeof(temp), out + 3, size - 3);
     if (addressLen + 3 >= size) {
         THROW(0x6C00);
     }
+    return addressLen;
 }
 
 void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t *dataBuffer,
@@ -882,7 +857,7 @@ void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t *dataBuffer,
                           &privateKey, 1);
     os_memset(&privateKey, 0, sizeof(privateKey));
     os_memset(privateKeyData, 0, sizeof(privateKeyData));
-    keyToWIF(&tmpCtx.publicKeyContext.publicKey, tmpCtx.publicKeyContext.address, sizeof(tmpCtx.publicKeyContext.address));
+    public_key_to_wif(&tmpCtx.publicKeyContext.publicKey, tmpCtx.publicKeyContext.address, sizeof(tmpCtx.publicKeyContext.address));
     if (p1 == P1_NON_CONFIRM) {
         *tx = set_result_get_publicKey();
         THROW(0x9000);

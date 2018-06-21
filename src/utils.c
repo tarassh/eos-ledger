@@ -9,7 +9,7 @@ unsigned char const BASE58ALPHABET[] = {
     'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'};
 
 
-unsigned char public_key_to_encoded_base58(unsigned char *in, unsigned char length,
+unsigned char buffer_to_encoded_base58(unsigned char *in, unsigned char length,
                          unsigned char *out,
                          unsigned char maxoutlen) {
     unsigned char tmp[164];
@@ -52,4 +52,16 @@ unsigned char public_key_to_encoded_base58(unsigned char *in, unsigned char leng
     }
     os_memmove(out, (buffer + j), length);
     return length;
+}
+
+const unsigned char hex_digits[] = {'0', '1', '2', '3', '4', '5', '6', '7',
+                                    '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+
+void array_hexstr(char *strbuf, const void *bin, unsigned int len) {
+    while (len--) {
+        *strbuf++ = hex_digits[((*((char *)bin)) >> 4) & 0xF];
+        *strbuf++ = hex_digits[(*((char *)bin)) & 0xF];
+        bin = (const void *)((unsigned int)bin + 1);
+    }
+    *strbuf = 0; // EOS
 }

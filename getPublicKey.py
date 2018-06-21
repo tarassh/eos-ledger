@@ -48,7 +48,7 @@ if args.path == None:
     args.path = "0'/0'/0'/0/0"
 
 donglePath = parse_bip32_path(args.path)
-apdu = "E0020100".decode('hex') + chr(len(donglePath) + 1) + chr(len(donglePath) / 4) + donglePath
+apdu = "E0020101".decode('hex') + chr(len(donglePath) + 1) + chr(len(donglePath) / 4) + donglePath
 
 dongle = getDongle(True)
 result = dongle.exchange(bytes(apdu))

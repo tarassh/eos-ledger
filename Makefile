@@ -27,7 +27,7 @@ APPVERSION_P=2
 APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
 
 APPNAME = eos
-APP_LOAD_PARAMS += --appFlags 0x40 --path "0'/0'" --curve secp256k1 $(COMMON_LOAD_PARAMS) 
+APP_LOAD_PARAMS += --appFlags 0x40 --path "44'/194'" --curve secp256k1 $(COMMON_LOAD_PARAMS) 
 
 #prepare hsm generation
 ICONNAME=nanos_app_eos.gif

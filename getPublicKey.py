@@ -23,7 +23,6 @@ import argparse
 import struct
 from base58 import b58encode
 import hashlib
-import binascii
 
 
 def parse_bip32_path(path):
@@ -60,8 +59,6 @@ public_key_compressed = bytearray([0x02]) + public_key[1:33]
 
 print "           Public key " + str(public_key).encode('hex')
 print "Public key compressed " + str(public_key_compressed).encode('hex')
-
-# public_key_compressed = binascii.hexlify(public_key_compressed)
 
 ripemd = hashlib.new('ripemd160')
 ripemd.update(public_key_compressed)

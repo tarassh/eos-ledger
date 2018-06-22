@@ -114,12 +114,13 @@ uint8_t asset_to_string(asset_t *asset, char *out, uint32_t size) {
 
 uint8_t pack_fc_unsigned_int(fc_unsigned_int_t value, char *out) {
     uint8_t i = 0;
+    uint64_t val = value;
     do {
-        uint8_t b = (uint8_t)(value & 0x7f);
-        value >>= 7;
-        b |= ((value > 0) << 7);
+        uint8_t b = (uint8_t)(val & 0x7f);
+        val >>= 7;
+        b |= ((val > 0) << 7);
         *(out + i++) = b;
-    } while (value);
+    } while (val);
 
     return i;
 }

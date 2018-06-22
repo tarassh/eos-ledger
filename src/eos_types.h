@@ -1,8 +1,12 @@
+#ifndef __EOS_TYPES_H__
+#define __EOS_TYPES_H__
+
 #include <stdint.h>
 
 typedef uint32_t fc_unsigned_int_t;
 typedef uint64_t name_t;
 typedef uint64_t symbol_t;
+typedef uint8_t chain_id_t[32];
 
 typedef struct transaction_header_t {
     uint32_t expiration;
@@ -29,3 +33,5 @@ typedef struct asset_t {
     int64_t amount;
     symbol_t symbol;
 } asset_t;
+
+#endif // __EOS_TYPES_H__

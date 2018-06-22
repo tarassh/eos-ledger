@@ -22,6 +22,7 @@
 #include "os_io_seproxyhal.h"
 #include "string.h"
 #include "utils.h"
+#include "eos_stream.h"
 
 #include "glyphs.h"
 
@@ -85,14 +86,20 @@ typedef struct transactionContext_t {
     uint8_t hash[32];
 } transactionContext_t;
 
+cx_sha256_t sha256;
+
 union {
     publicKeyContext_t publicKeyContext;
     transactionContext_t transactionContext;
 } tmpCtx;
 
+txProcessingContext_t txProcessingCtx;
+txProcessingContent_t txContent;
+
 // volatile uint8_t dataAllowed;
 // volatile uint8_t fidoTransport;
 volatile char fullAddress[60];
+volatile char fullAction[512];
 volatile char fullAmount[50];
 volatile char maxFee[50];
 volatile bool dataPresent;
@@ -805,7 +812,7 @@ uint8_t public_key_to_wif(cx_ecfp_public_key_t *publicKey, uint8_t *out, uint8_t
     out[2] = 'S';
     addressLen = buffer_to_encoded_base58(temp, sizeof(temp), out + 3, size - 3);
     if (addressLen + 3 >= size) {
-        THROW(0x6C00);
+        THROW(EXCEPTION_OVERFLOW);
     }
     return addressLen;
 }
@@ -884,6 +891,7 @@ void handleSign(uint8_t p1, uint8_t p2, uint8_t *workBuffer,
                 uint16_t dataLength, volatile unsigned int *flags,
                 volatile unsigned int *tx) {
     uint32_t i;
+    parserStatus_e txResult;
     if (p1 == P1_FIRST) {
         tmpCtx.transactionContext.pathLength = workBuffer[0];
         if ((tmpCtx.transactionContext.pathLength < 0x01) ||
@@ -901,7 +909,33 @@ void handleSign(uint8_t p1, uint8_t p2, uint8_t *workBuffer,
             dataLength -= 4;
         }
         dataPresent = false;
+        initTxContext(&txProcessingCtx, &sha256, &txContent);
+    } else if (p1 != P1_MORE) {
+        THROW(0x6B00);
     }
+    if (p2 != 0) {
+        THROW(0x6B00);
+    }
+    if (txProcessingCtx.state == TX_NONE) {
+        PRINTF("Parser not initialized\n");
+        THROW(0x6985);
+    }
+    txResult = parseTx(&txProcessingCtx, workBuffer, dataLength);
+    switch (txResult) {
+    case STREAM_FINISHED:
+        break;
+    case STREAM_PROCESSING:
+        THROW(0x9000);
+    case STREAM_FAULT:
+        THROW(0x6A80);
+    default:
+        PRINTF("Unexpected parser status\n");
+        THROW(0x6A80);
+    }
+
+    // store hash
+    cx_hash(&sha256.header, CX_LAST, tmpCtx.transactionContext.hash, 0, 
+        tmpCtx.transactionContext.hash, sizeof(tmpCtx.transactionContext.hash));
 }
 
 void handleApdu(volatile unsigned int *flags, volatile unsigned int *tx) {

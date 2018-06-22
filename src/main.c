@@ -74,7 +74,7 @@ uint8_t public_key_to_wif(cx_ecfp_public_key_t *publicKey, uint8_t *out, uint8_t
 
 typedef struct publicKeyContext_t {
     cx_ecfp_public_key_t publicKey;
-    uint8_t address[60];
+    char address[60];
     uint8_t chainCode[32];
     bool getChaincode;
 } publicKeyContext_t;
@@ -85,17 +85,9 @@ typedef struct transactionContext_t {
     uint8_t hash[32];
 } transactionContext_t;
 
-typedef struct messageSigningContext_t {
-    uint8_t pathLength;
-    uint32_t bip32Path[MAX_BIP32_PATH];
-    uint8_t hash[32];
-    uint32_t remainingLength;
-} messageSigningContext_t;
-
 union {
     publicKeyContext_t publicKeyContext;
     transactionContext_t transactionContext;
-    messageSigningContext_t messageSigningContext;
 } tmpCtx;
 
 // volatile uint8_t dataAllowed;
@@ -782,10 +774,7 @@ uint32_t set_result_get_publicKey() {
     os_memmove(G_io_apdu_buffer + tx, tmpCtx.publicKeyContext.publicKey.W, 65);
     tx += 65;
 
-    uint32_t addressLength = sizeof(tmpCtx.publicKeyContext.address);
-    while (tmpCtx.publicKeyContext.address[addressLength - 1] == 0) {
-        addressLength--;
-    }
+    uint32_t addressLength = strlen(tmpCtx.publicKeyContext.address);
 
     G_io_apdu_buffer[tx++] = addressLength;
     os_memmove(G_io_apdu_buffer + tx, tmpCtx.publicKeyContext.address, addressLength);
@@ -864,7 +853,7 @@ void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t *dataBuffer,
     } else {
         // prepare for a UI based reply
         skipWarning = false;
-        snprintf(fullAddress, sizeof(fullAddress), "%.*s", 60,
+        snprintf(fullAddress, sizeof(fullAddress), "%.*s", strlen(tmpCtx.publicKeyContext.address),
                  tmpCtx.publicKeyContext.address);
         ux_step = 0;
         ux_step_count = 2;
@@ -891,6 +880,30 @@ void handleGetAppConfiguration(uint8_t p1, uint8_t p2, uint8_t *workBuffer,
     THROW(0x9000);
 }
 
+void handleSign(uint8_t p1, uint8_t p2, uint8_t *workBuffer,
+                uint16_t dataLength, volatile unsigned int *flags,
+                volatile unsigned int *tx) {
+    uint32_t i;
+    if (p1 == P1_FIRST) {
+        tmpCtx.transactionContext.pathLength = workBuffer[0];
+        if ((tmpCtx.transactionContext.pathLength < 0x01) ||
+            (tmpCtx.transactionContext.pathLength > MAX_BIP32_PATH)) {
+            PRINTF("Invalid path\n");
+            THROW(0x6a80);
+        }
+        workBuffer++;
+        dataLength--;
+        for (i = 0; i < tmpCtx.transactionContext.pathLength; i++) {
+            tmpCtx.transactionContext.bip32Path[i] =
+                (workBuffer[0] << 24) | (workBuffer[1] << 16) |
+                (workBuffer[2] << 8) | (workBuffer[3]);
+            workBuffer += 4;
+            dataLength -= 4;
+        }
+        dataPresent = false;
+    }
+}
+
 void handleApdu(volatile unsigned int *flags, volatile unsigned int *tx) {
     unsigned short sw = 0;
 
@@ -909,10 +922,10 @@ void handleApdu(volatile unsigned int *flags, volatile unsigned int *tx) {
                 break;
 
             case INS_SIGN:
-                // handleSign(G_io_apdu_buffer[OFFSET_P1],
-                //            G_io_apdu_buffer[OFFSET_P2],
-                //            G_io_apdu_buffer + OFFSET_CDATA,
-                //            G_io_apdu_buffer[OFFSET_LC], flags, tx);
+                handleSign(G_io_apdu_buffer[OFFSET_P1],
+                           G_io_apdu_buffer[OFFSET_P2],
+                           G_io_apdu_buffer + OFFSET_CDATA,
+                           G_io_apdu_buffer[OFFSET_LC], flags, tx);
                 break;
 
             case INS_GET_APP_CONFIGURATION:

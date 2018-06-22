@@ -43,18 +43,18 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--path', help="BIP 32 path to retrieve")
 args = parser.parse_args()
 
-if args.path == None:
+if args.path is None:
     args.path = "44'/194'/0'/0/0"
 
 donglePath = parse_bip32_path(args.path)
-apdu = "E0020101".decode('hex') + chr(len(donglePath) + 1) + chr(len(donglePath) / 4) + donglePath
+apdu = "E0020001".decode('hex') + chr(len(donglePath) + 1) + chr(len(donglePath) / 4) + donglePath
 
 dongle = getDongle(True)
 result = dongle.exchange(bytes(apdu))
 offset = 1 + result[0]
 address = result[offset + 1: offset + 1 + result[offset]]
 
-public_key = result[1: 1 + result[0]];
+public_key = result[1: 1 + result[0]]
 public_key_compressed = bytearray([0x02]) + public_key[1:33]
 
 print "           Public key " + str(public_key).encode('hex')
@@ -66,5 +66,7 @@ check = ripemd.digest()[:4]
 
 buff = public_key_compressed + check
 print "Calculated from public key: Address EOS" + b58encode(str(buff))
-
 print "      Received from ledger: Address " + str(address)
+
+apdu = "E0020101".decode('hex') + chr(len(donglePath) + 1) + chr(len(donglePath) / 4) + donglePath
+result = dongle.exchange(bytes(apdu))

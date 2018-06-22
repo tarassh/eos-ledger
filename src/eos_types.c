@@ -1,12 +1,13 @@
 #include "eos_types.h"
 #include "os.h"
 #include <stdbool.h>
+#include "string.h"
 
 static const char* charmap = ".12345abcdefghijklmnopqrstuvwxyz";
 
 uint8_t name_to_string(name_t value, char *out, uint32_t size) {
     if (size > 13) {
-        return 0;
+        THROW(EXCEPTION_OVERFLOW);
     }
 
     uint32_t i = 0;
@@ -19,7 +20,7 @@ uint8_t name_to_string(name_t value, char *out, uint32_t size) {
         value >>= (i == 0 ? 4 : 5);
     }
 
-    while (tmp[actual_size - 1] == '.' && --actual_size != 0);
+    while (actual_size != 0 && tmp[--actual_size] == '.');
 
     os_memmove(out, tmp, actual_size);
     return actual_size;
@@ -61,11 +62,11 @@ uint8_t symbol_to_string(symbol_t sym, char *out, uint32_t size) {
     sym >>= 8;
 
     if (size < 8) {
-        return 0;
+        THROW(EXCEPTION_OVERFLOW);
     }
 
     uint8_t i = 0;
-    char tmp[8] = {0};
+    char tmp[8] = { 0 };
 
     for (i = 0; i < 7; ++i) {
         char c = (char)(sym & 0xff);
@@ -80,7 +81,7 @@ uint8_t symbol_to_string(symbol_t sym, char *out, uint32_t size) {
 
 uint8_t asset_to_string(asset_t *asset, char *out, uint32_t size) {
     if (asset == NULL) {
-        return 0;
+        THROW(INVALID_PARAMETER);
     }
 
     int64_t p = (int64_t)symbol_precision(asset->symbol);
@@ -99,17 +100,13 @@ uint8_t asset_to_string(asset_t *asset, char *out, uint32_t size) {
         change /= 10;
     }
 
-    char symbol[9] = {0};
+    char symbol[9] = { 0 };
     symbol_to_string(asset->symbol, symbol, 8);
 
-    char tmp[64] = {0};
-    snprintf(tmp, 64, "%lld.%s %s", asset->amount/p10, fraction, symbol);
+    char tmp[64] = { 0 };
+    snprintf(tmp, 64, "%lld.%s %s", asset->amount / p10, fraction, symbol);
 
-    uint8_t actual_size = 0;
-    while(actual_size < sizeof(tmp) && tmp[actual_size] != 0) {
-        actual_size++;
-    } 
-
+    uint8_t actual_size = strlen(tmp);
     os_memmove(out, tmp, actual_size);
 
     return actual_size;

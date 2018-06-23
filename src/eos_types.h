@@ -34,4 +34,6 @@ typedef struct asset_t {
     symbol_t symbol;
 } asset_t;
 
+uint8_t pack_fc_unsigned_int(fc_unsigned_int_t value, uint8_t *out);
+
 #endif // __EOS_TYPES_H__

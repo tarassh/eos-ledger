@@ -112,7 +112,7 @@ uint8_t asset_to_string(asset_t *asset, char *out, uint32_t size) {
     return actual_size;
 }
 
-uint8_t pack_fc_unsigned_int(fc_unsigned_int_t value, char *out) {
+uint8_t pack_fc_unsigned_int(fc_unsigned_int_t value, uint8_t *out) {
     uint8_t i = 0;
     uint64_t val = value;
     do {

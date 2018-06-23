@@ -29,53 +29,6 @@ static void hashTxData(txProcessingContext_t *context, uint8_t *buffer, uint32_t
     cx_hash(&context->sha256->header, 0, buffer, length, NULL, 0);
 }
 
-bool tlvValidate(txProcessingContext_t *context) {
-    uint16_t length;
-    os_memmove(&length, context->tlvBuffer + 1, 2);
-    switch (context->tlvBuffer[0]) {
-    case TX_CHAIN_ID:
-        if (sizeof(chain_id_t) != length) {
-            PRINTF("tlvValidate Invalid chain id size\n");
-            return false;
-        }
-        break;
-    case TX_HEADER:
-        if (sizeof(transaction_header_t) != length) {
-            PRINTF("tlvValidate Invalid transaction header size\n");
-            return false;
-        }
-        break;
-    case TX_CONTEXT_FREE_ACTIONS:
-        if (length != 0) {
-            PRINTF("tlvValidate Context free actions are not supported\n");
-            return false;
-        }
-        break;
-    case TX_ACTIONS:
-        if (length == 0) {
-            PRINTF("tlvValidate empty action is not allowed\n");
-            return false;
-        }
-        break;
-    case TX_TRANSACTION_EXTENSIONS:
-        if (length != 0) {
-            PRINTF("tlvValidate transaction extensions are not supported\n");
-            return false;
-        }
-        break;
-    case TX_CONTEXT_FREE_DATA:
-        if (length != 0) {
-            PRINTF("tlvValidate context free data is not supported\n");
-            return false;
-        }
-    default:
-        PRINTF("Invalid Tag\n");
-        return false;
-    }
-
-    return true;
-}
-
 static void processChainId(txProcessingContext_t *context) {
     uint16_t length;
     os_memmove(&length, context->tlvBuffer + 1, 2);
@@ -111,7 +64,7 @@ static void processChainId(txProcessingContext_t *context) {
 static void processHeader(txProcessingContext_t *context) {
     uint16_t length;
     os_memmove(&length, context->tlvBuffer + 1, 2);
-    if (context->state != TX_CHAIN_ID) {
+    if (context->state != TX_HEADER) {
         PRINTF("processChainId Invalid Tag\n");
         THROW(EXCEPTION);
     }
@@ -128,7 +81,7 @@ static void processHeader(txProcessingContext_t *context) {
                 ? context->commandLength
                 : context->currentFieldLength - context->currentFieldPos);
         
-        uint8_t * pHeader = (char *)(&context->content->header);
+        uint8_t *pHeader = (uint8_t *)(&context->content->header);
         os_memmove(pHeader + context->currentFieldLength, context->workBuffer, length);
         
         context->workBuffer += length;
@@ -146,13 +99,70 @@ static void processHeader(txProcessingContext_t *context) {
         hashTxData(context, (uint8_t *)&header->ref_block_prefix, sizeof(header->ref_block_prefix));
         packedBytes = pack_fc_unsigned_int(header->max_net_usage_words, tmp);
         hashTxData(context, tmp, packedBytes);
-        hashTxData(context, (uint8_t *)&header->max_cpu_usage_ms, sizeif(header->max_cpu_usage_ms));
+        hashTxData(context, (uint8_t *)&header->max_cpu_usage_ms, sizeof(header->max_cpu_usage_ms));
         packedBytes = pack_fc_unsigned_int(header->delay_sec, tmp);
         hashTxData(context, tmp, packedBytes);
 
         context->state++;
         context->processingField = false;
     }
+}
+
+static void processCtxFreeActions(txProcessingContext_t *context) {
+    uint16_t length;
+    os_memmove(&length, context->tlvBuffer + 1, 2);
+    if (context->state != TX_CONTEXT_FREE_ACTIONS) {
+        PRINTF("processCtxFreeActions Invalid Tag\n");
+        THROW(EXCEPTION);
+    }
+
+    if (length != 0) {
+        PRINTF("processCtxFreeActions Context free actions are not supported\n");
+        THROW(EXCEPTION);
+    }
+
+    // Move to next state
+    context->state++;
+    context->processingField = false;
+}
+
+static void processTxExtensions(txProcessingContext_t *context) {
+    uint16_t length;
+    os_memmove(&length, context->tlvBuffer + 1, 2);
+    if (context->state != TX_TRANSACTION_EXTENSIONS) {
+        PRINTF("processTxExtensions Invalid Tag\n");
+        THROW(EXCEPTION);
+    }
+
+    if (length != 0) {
+        PRINTF("processTxExtensions Transaction extensions are not supported\n");
+        THROW(EXCEPTION);
+    }
+
+    // Move to next state
+    context->state++;
+    context->processingField = false;
+}
+
+static void processCtxFreeData(txProcessingContext_t *context) {
+    uint16_t length;
+    os_memmove(&length, context->tlvBuffer + 1, 2);
+    if (context->state != TX_CONTEXT_FREE_DATA) {
+        PRINTF("processCtxFreeData Invalid Tag\n");
+        THROW(EXCEPTION);
+    }
+
+    if (length != 0) {
+        PRINTF("processCtxFreeData Context free data is not supported\n");
+        THROW(EXCEPTION);
+    }
+
+    uint8_t empty[32] = {0};
+    hashTxData(context, empty, sizeof(empty));
+
+    // Move to next state
+    context->state++;
+    context->processingField = false;
 }
 
 static parserStatus_e processTxInternal(txProcessingContext_t *context) {
@@ -188,14 +198,18 @@ static parserStatus_e processTxInternal(txProcessingContext_t *context) {
             processChainId(context);
             break;
         case TX_HEADER:
+            processHeader(context);
             break;
         case TX_CONTEXT_FREE_ACTIONS:
+            processCtxFreeActions(context);
             break;
         case TX_ACTIONS:
             break;
         case TX_TRANSACTION_EXTENSIONS:
+            processTxExtensions(context);
             break;
         case TX_CONTEXT_FREE_DATA:
+            processCtxFreeData(context);
             break;
         default:
             PRINTF("Invalid RLP decoder context\n");

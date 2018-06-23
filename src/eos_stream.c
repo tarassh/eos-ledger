@@ -24,11 +24,19 @@ uint8_t readTxByte(txProcessingContext_t *context) {
     context->commandLength--;
     return data;
 }
-
+/**
+ * Sequentially hash an incoming data.
+ * Hash functionality is moved out here in order to reduce 
+ * dependencies on specific hash implementation.
+*/
 static void hashTxData(txProcessingContext_t *context, uint8_t *buffer, uint32_t length) {
     cx_hash(&context->sha256->header, 0, buffer, length, NULL, 0);
 }
 
+/**
+ * Chain id can be processed on the fly. Every received chunck 
+ * of chain id is hashed without caching.
+*/
 static void processChainId(txProcessingContext_t *context) {
     uint16_t length;
     os_memmove(&length, context->tlvBuffer + 1, 2);
@@ -61,6 +69,10 @@ static void processChainId(txProcessingContext_t *context) {
     }
 }
 
+/**
+ * Header processing requires caching, as some fields require 
+ * transformation before hashing.
+*/
 static void processHeader(txProcessingContext_t *context) {
     uint16_t length;
     os_memmove(&length, context->tlvBuffer + 1, 2);
@@ -108,6 +120,11 @@ static void processHeader(txProcessingContext_t *context) {
     }
 }
 
+/**
+ * Context free actions are not supported. Decision has been made based on
+ * observation. Nevertheless, the '0' size value should be hashed as it is
+ * a part of signining information.
+*/
 static void processCtxFreeActions(txProcessingContext_t *context) {
     uint16_t length;
     os_memmove(&length, context->tlvBuffer + 1, 2);
@@ -121,11 +138,20 @@ static void processCtxFreeActions(txProcessingContext_t *context) {
         THROW(EXCEPTION);
     }
 
+    uint8_t tmp[16] = {0};
+    uint8_t packedBytes = pack_fc_unsigned_int(0, tmp);
+    hashTxData(context, tmp, packedBytes);
+
     // Move to next state
     context->state++;
     context->processingField = false;
 }
 
+/**
+ * Transaction extensions are not supported. Decision has been made based on
+ * observations. Nevertheless, the '0' size value should be hashed as it is
+ * a part of signing infornation.
+*/
 static void processTxExtensions(txProcessingContext_t *context) {
     uint16_t length;
     os_memmove(&length, context->tlvBuffer + 1, 2);
@@ -139,11 +165,19 @@ static void processTxExtensions(txProcessingContext_t *context) {
         THROW(EXCEPTION);
     }
 
+    uint8_t tmp[16] = {0};
+    uint8_t packedBytes = pack_fc_unsigned_int(0, tmp);
+    hashTxData(context, tmp, packedBytes);
+
     // Move to next state
     context->state++;
     context->processingField = false;
 }
 
+/**
+ * Context free actions are not supported and a corresponding data as well.
+ * Hash 32 bytes long '0' value buffer instead.
+*/
 static void processCtxFreeData(txProcessingContext_t *context) {
     uint16_t length;
     os_memmove(&length, context->tlvBuffer + 1, 2);
@@ -218,6 +252,14 @@ static parserStatus_e processTxInternal(txProcessingContext_t *context) {
     }
 }
 
+/**
+ * Transaction processing should be done in a most efficient
+ * way as possible, as EOS transaction size isn't fixed
+ * and depends on action size. 
+ * Also, Ledger Nano S have limited RAM resource, so data caching
+ * could be very expencive. Due to these features and limitations
+ * only some fields are cached before processing.
+*/
 parserStatus_e parseTx(txProcessingContext_t *context, uint8_t *buffer, uint32_t length) {
     parserStatus_e result;
     BEGIN_TRY {

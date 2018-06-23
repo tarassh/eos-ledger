@@ -38,14 +38,12 @@ static void hashTxData(txProcessingContext_t *context, uint8_t *buffer, uint32_t
  * of chain id is hashed without caching.
 */
 static void processChainId(txProcessingContext_t *context) {
-    uint16_t length;
-    os_memmove(&length, context->tlvBuffer + 1, 2);
     if (context->state != TX_CHAIN_ID) {
         PRINTF("processChainId Invalid Tag\n");
         THROW(EXCEPTION);
     }
 
-    if (sizeof(chain_id_t) != length) {
+    if (sizeof(chain_id_t) != context->currentFieldLength) {
         PRINTF("processChainId Invalid chain id size\n");
         THROW(EXCEPTION);
     }
@@ -74,14 +72,12 @@ static void processChainId(txProcessingContext_t *context) {
  * transformation before hashing.
 */
 static void processHeader(txProcessingContext_t *context) {
-    uint16_t length;
-    os_memmove(&length, context->tlvBuffer + 1, 2);
     if (context->state != TX_HEADER) {
         PRINTF("processChainId Invalid Tag\n");
         THROW(EXCEPTION);
     }
 
-    if (sizeof(chain_id_t) != length) {
+    if (sizeof(chain_id_t) != context->currentFieldLength) {
         PRINTF("processChainId Invalid chain id size\n");
         THROW(EXCEPTION);
     }
@@ -126,14 +122,12 @@ static void processHeader(txProcessingContext_t *context) {
  * a part of signining information.
 */
 static void processCtxFreeActions(txProcessingContext_t *context) {
-    uint16_t length;
-    os_memmove(&length, context->tlvBuffer + 1, 2);
     if (context->state != TX_CONTEXT_FREE_ACTIONS) {
         PRINTF("processCtxFreeActions Invalid Tag\n");
         THROW(EXCEPTION);
     }
 
-    if (length != 0) {
+    if (context->currentFieldLength != 0) {
         PRINTF("processCtxFreeActions Context free actions are not supported\n");
         THROW(EXCEPTION);
     }
@@ -153,14 +147,12 @@ static void processCtxFreeActions(txProcessingContext_t *context) {
  * a part of signing infornation.
 */
 static void processTxExtensions(txProcessingContext_t *context) {
-    uint16_t length;
-    os_memmove(&length, context->tlvBuffer + 1, 2);
     if (context->state != TX_TRANSACTION_EXTENSIONS) {
         PRINTF("processTxExtensions Invalid Tag\n");
         THROW(EXCEPTION);
     }
 
-    if (length != 0) {
+    if (context->currentFieldLength != 0) {
         PRINTF("processTxExtensions Transaction extensions are not supported\n");
         THROW(EXCEPTION);
     }
@@ -179,14 +171,12 @@ static void processTxExtensions(txProcessingContext_t *context) {
  * Hash 32 bytes long '0' value buffer instead.
 */
 static void processCtxFreeData(txProcessingContext_t *context) {
-    uint16_t length;
-    os_memmove(&length, context->tlvBuffer + 1, 2);
     if (context->state != TX_CONTEXT_FREE_DATA) {
         PRINTF("processCtxFreeData Invalid Tag\n");
         THROW(EXCEPTION);
     }
 
-    if (length != 0) {
+    if (context->currentFieldLength != 0) {
         PRINTF("processCtxFreeData Context free data is not supported\n");
         THROW(EXCEPTION);
     }
@@ -197,6 +187,21 @@ static void processCtxFreeData(txProcessingContext_t *context) {
     // Move to next state
     context->state++;
     context->processingField = false;
+}
+
+/**
+ * 
+*/
+static void processActions(txProcessingContext_t *context) {
+    if (context->state != TX_ACTIONS) {
+        PRINTF("processActions Invalid Tag\n");
+        THROW(EXCEPTION);
+    }
+
+    if (context->currentFieldLength > 0) {
+        PRINTF("processActions no action in transaction\n");
+        THROW(EXCEPTION);
+    }
 }
 
 static parserStatus_e processTxInternal(txProcessingContext_t *context) {
@@ -216,6 +221,8 @@ static parserStatus_e processTxInternal(txProcessingContext_t *context) {
                     readTxByte(context);
                 
                 if (context->tlvBufferPos == sizeof(context->tlvBuffer)) {
+                    os_memmove((uint8_t *)&context->currentFieldLength, context->tlvBuffer + 1, 4);
+
                     canDecode = true;
                     break;
                 }
@@ -238,6 +245,7 @@ static parserStatus_e processTxInternal(txProcessingContext_t *context) {
             processCtxFreeActions(context);
             break;
         case TX_ACTIONS:
+            processActions(context);
             break;
         case TX_TRANSACTION_EXTENSIONS:
             processTxExtensions(context);

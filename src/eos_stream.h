@@ -30,7 +30,7 @@ typedef struct txProcessingContext_t {
     uint32_t currentFieldLength;
     uint32_t currentFieldPos;
     bool processingField;
-    uint8_t tlvBuffer[3];
+    uint8_t tlvBuffer[5];
     uint32_t tlvBufferPos;
     uint8_t *workBuffer;
     uint32_t commandLength;

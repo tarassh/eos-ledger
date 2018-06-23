@@ -814,8 +814,6 @@ void handleSign(uint8_t p1, uint8_t p2, uint8_t *workBuffer,
     cx_hash(&sha256.header, CX_LAST, tmpCtx.transactionContext.hash, 0, 
         tmpCtx.transactionContext.hash, sizeof(tmpCtx.transactionContext.hash));
 
-    
-
     skipWarning = !dataPresent;
     ux_step = 0;
     ux_step_count = 5;

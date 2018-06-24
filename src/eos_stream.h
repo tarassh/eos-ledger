@@ -14,14 +14,19 @@ typedef struct txProcessingContent_t {
 } txProcessingContent_t;
 
 typedef enum txProcessingState_e {
-    TX_NONE = 0x0, 
-    TX_CHAIN_ID = 0x1,
-    TX_HEADER,
-    TX_CONTEXT_FREE_ACTIONS,
-    TX_ACTIONS,
-    TX_TRANSACTION_EXTENSIONS,
-    TX_CONTEXT_FREE_DATA,
-    TX_DONE
+    TLV_TX_NONE = 0x0, 
+    TLV_TX_CHAIN_ID = 0x1,
+    TLV_TX_HEADER_EXPITATION,
+    TLV_TX_HEADER_REF_BLOCK_NUM,
+    TLV_TX_HEADER_REF_BLOCK_PREFIX,
+    TLV_TX_HEADER_MAX_NET_USAGE_WORDS,
+    TLV_TX_HEADER_MAX_CPU_USAGE_MS,
+    TLV_TX_HEADER_DELAY_SEC,
+    TLV_TX_CONTEXT_FREE_ACTIONS,
+    TLV_TX_ACTIONS,
+    TLV_TX_TRANSACTION_EXTENSIONS,
+    TLV_TX_CONTEXT_FREE_DATA,
+    TLV_TX_DONE
 } txProcessingState_e;
 
 typedef struct txProcessingContext_t {
@@ -33,6 +38,7 @@ typedef struct txProcessingContext_t {
     bool isSequence;
     uint8_t tlvBuffer[4];
     uint32_t tlvBufferPos;
+    fc_unsigned_int_t tempHeaderValue;
     uint8_t *workBuffer;
     uint32_t commandLength;
     txProcessingContent_t *content;

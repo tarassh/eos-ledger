@@ -10,7 +10,7 @@ void initTxContext(txProcessingContext_t *context,
     os_memset(context, 0, sizeof(txProcessingContext_t));
     context->sha256 = sha256;
     context->content = processingContent;
-    context->state = TX_CHAIN_ID;
+    context->state = TLV_TX_CHAIN_ID;
     cx_sha256_init(context->sha256);
 }
 
@@ -39,13 +39,13 @@ static void hashTxData(txProcessingContext_t *context, uint8_t *buffer, uint32_t
  * of chain id is hashed without caching.
 */
 static void processChainId(txProcessingContext_t *context) {
-    if (context->state != TX_CHAIN_ID) {
-        PRINTF("processChainId Invalid Tag\n");
+    if (context->isSequence) {
+        PRINTF("processChainId Invalid type for CHAIN_ID\n");
         THROW(EXCEPTION);
     }
 
     if (sizeof(chain_id_t) != context->currentFieldLength) {
-        PRINTF("processChainId Invalid chain id size\n");
+        PRINTF("processChainId processChainId Invalid size for CHAIN_ID\n");
         THROW(EXCEPTION);
     }
 
@@ -69,17 +69,27 @@ static void processChainId(txProcessingContext_t *context) {
 }
 
 /**
- * Header processing requires caching, as some fields require 
- * transformation before hashing.
+ * Some header fields can be processed in the same way.
 */
-static void processHeader(txProcessingContext_t *context) {
-    if (context->state != TX_HEADER) {
-        PRINTF("processChainId Invalid Tag\n");
+static void processHeaderField(txProcessingContext_t *context) {
+    if (context->isSequence) {
+        PRINTF("processHeaderField Invalid type for HEADER FIELD\n");
         THROW(EXCEPTION);
     }
-
-    if (sizeof(chain_id_t) != context->currentFieldLength) {
-        PRINTF("processChainId Invalid chain id size\n");
+    if ((context->state == TLV_TX_HEADER_EXPITATION || 
+        context->state == TLV_TX_HEADER_REF_BLOCK_PREFIX) && 
+        context->currentFieldLength != sizeof(uint32_t))  {
+        PRINTF("processHeaderField Invalid length for HEADER_EXPITATION or HEADER_REF_BLOCK_PREFIX\n");
+        THROW(EXCEPTION);
+    }
+    if ((context->state == TLV_TX_HEADER_REF_BLOCK_NUM) && 
+        context->currentFieldLength != sizeof(uint16_t)) {
+        PRINTF("processHeaderField Invalid length for HEADER_REF_BLOCK_NUM\n");
+        THROW(EXCEPTION);
+    }
+    if ((context->state == TLV_TX_HEADER_MAX_CPU_USAGE_MS) &&
+        context->currentFieldLength != sizeof(uint8_t)) {
+        PRINTF("processHeaderField Invalid length for max_cpu_usage_ms\n");
         THROW(EXCEPTION);
     }
 
@@ -90,8 +100,42 @@ static void processHeader(txProcessingContext_t *context) {
                 ? context->commandLength
                 : context->currentFieldLength - context->currentFieldPos);
         
-        uint8_t *pHeader = (uint8_t *)(&context->content->header);
-        os_memmove(pHeader + context->currentFieldLength, context->workBuffer, length);
+        hashTxData(context, context->workBuffer, length);
+        context->workBuffer += length;
+        context->commandLength -= length;
+        context->currentFieldPos += length;
+    }
+
+    if (context->currentFieldPos == context->currentFieldLength) {
+        context->state++;
+        context->processingField = false;
+    }
+}
+
+/**
+ * Some header fields should be cached before hashing.
+*/
+static void processHeaderField2(txProcessingContext_t *context) {
+    if (context->isSequence) {
+        PRINTF("processHeaderField2 Invalid type for HEADER FIELD\n");
+        THROW(EXCEPTION);
+    }
+    if ((context->state == TLV_TX_HEADER_MAX_NET_USAGE_WORDS || 
+        context->state == TLV_TX_HEADER_DELAY_SEC) && 
+        context->currentFieldLength != sizeof(fc_unsigned_int_t))  {
+        PRINTF("processHeaderField2 Invalid length for HEADER_MAX_NET_USAGE_WORDS or HEADER_DELAY_SEC\n");
+        THROW(EXCEPTION);
+    }
+
+    if (context->currentFieldPos < context->currentFieldLength) {
+        uint32_t length = 
+            (context->commandLength <
+                     ((context->currentFieldLength - context->currentFieldPos))
+                ? context->commandLength
+                : context->currentFieldLength - context->currentFieldPos);
+
+        uint8_t *fieldByteOffset = ((uint8_t *)(context->tempHeaderValue) + context->currentFieldPos);
+        os_memmove(fieldByteOffset, context->workBuffer, length);
         
         context->workBuffer += length;
         context->commandLength -= length;
@@ -99,21 +143,12 @@ static void processHeader(txProcessingContext_t *context) {
     }
 
     if (context->currentFieldPos == context->currentFieldLength) {
-        transaction_header_t *header = &context->content->header;
-        uint8_t tmp[16] = { 0 };
-        uint8_t packedBytes;
-
-        hashTxData(context, (uint8_t *)&header->expiration, sizeof(header->expiration));
-        hashTxData(context, (uint8_t *)&header->ref_block_num, sizeof(header->ref_block_num));
-        hashTxData(context, (uint8_t *)&header->ref_block_prefix, sizeof(header->ref_block_prefix));
-        packedBytes = pack_fc_unsigned_int(header->max_net_usage_words, tmp);
-        hashTxData(context, tmp, packedBytes);
-        hashTxData(context, (uint8_t *)&header->max_cpu_usage_ms, sizeof(header->max_cpu_usage_ms));
-        packedBytes = pack_fc_unsigned_int(header->delay_sec, tmp);
-        hashTxData(context, tmp, packedBytes);
-
         context->state++;
         context->processingField = false;
+
+        uint8_t tmp[16] = { 0 };
+        uint32_t length = pack_fc_unsigned_int(context->tempHeaderValue, tmp);
+        hashTxData(context, tmp, length);
     }
 }
 
@@ -123,8 +158,8 @@ static void processHeader(txProcessingContext_t *context) {
  * a part of signining information.
 */
 static void processCtxFreeActions(txProcessingContext_t *context) {
-    if (context->state != TX_CONTEXT_FREE_ACTIONS) {
-        PRINTF("processCtxFreeActions Invalid Tag\n");
+    if (!context->isSequence) {
+        PRINTF("processCtxFreeActions Invalid type for CTX_FREE_ACTIONS\n");
         THROW(EXCEPTION);
     }
 
@@ -148,8 +183,8 @@ static void processCtxFreeActions(txProcessingContext_t *context) {
  * a part of signing infornation.
 */
 static void processTxExtensions(txProcessingContext_t *context) {
-    if (context->state != TX_TRANSACTION_EXTENSIONS) {
-        PRINTF("processTxExtensions Invalid Tag\n");
+    if (!context->isSequence) {
+        PRINTF("processTxExtensions Invalid type for TX_EXTENSIONS\n");
         THROW(EXCEPTION);
     }
 
@@ -172,8 +207,8 @@ static void processTxExtensions(txProcessingContext_t *context) {
  * Hash 32 bytes long '0' value buffer instead.
 */
 static void processCtxFreeData(txProcessingContext_t *context) {
-    if (context->state != TX_CONTEXT_FREE_DATA) {
-        PRINTF("processCtxFreeData Invalid Tag\n");
+    if (!context->isSequence) {
+        PRINTF("processCtxFreeData Invalid type for CTX_FREE_DATA\n");
         THROW(EXCEPTION);
     }
 
@@ -194,12 +229,22 @@ static void processCtxFreeData(txProcessingContext_t *context) {
  * 
 */
 static void processActions(txProcessingContext_t *context) {
-    
+    if (!context->isSequence) {
+        PRINTF("processActions Invalid type for ACTIONS\n");
+        THROW(EXCEPTION);
+    }
+
+    if (context->currentFieldLength != 1) {
+        PRINTF("processActions supports only one action at the moment\n");
+        THROW(EXCEPTION);
+    }
+
+
 }
 
 static parserStatus_e processTxInternal(txProcessingContext_t *context) {
     for(;;) {
-        if (context->state == TX_DONE) {
+        if (context->state == TLV_TX_DONE) {
             return STREAM_FINISHED;
         }
         if (context->commandLength == 0) {
@@ -240,22 +285,29 @@ static parserStatus_e processTxInternal(txProcessingContext_t *context) {
             context->processingField = true;
         }
         switch (context->state) {
-        case TX_CHAIN_ID:
+        case TLV_TX_CHAIN_ID:
             processChainId(context);
             break;
-        case TX_HEADER:
-            processHeader(context);
+        case TLV_TX_HEADER_EXPITATION:
+        case TLV_TX_HEADER_REF_BLOCK_NUM:
+        case TLV_TX_HEADER_REF_BLOCK_PREFIX:
+        case TLV_TX_HEADER_MAX_CPU_USAGE_MS:
+            processHeaderField(context);
             break;
-        case TX_CONTEXT_FREE_ACTIONS:
+        case TLV_TX_HEADER_MAX_NET_USAGE_WORDS:
+        case TLV_TX_HEADER_DELAY_SEC:
+            processHeaderField2(context);
+            break;
+        case TLV_TX_CONTEXT_FREE_ACTIONS:
             processCtxFreeActions(context);
             break;
-        case TX_ACTIONS:
+        case TLV_TX_ACTIONS:
             processActions(context);
             break;
-        case TX_TRANSACTION_EXTENSIONS:
+        case TLV_TX_TRANSACTION_EXTENSIONS:
             processTxExtensions(context);
             break;
-        case TX_CONTEXT_FREE_DATA:
+        case TLV_TX_CONTEXT_FREE_DATA:
             processCtxFreeData(context);
             break;
         default:

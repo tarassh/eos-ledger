@@ -66,6 +66,9 @@ void array_hexstr(char *strbuf, const void *bin, unsigned int len) {
     *strbuf = 0; // EOS
 }
 
+/**
+ * Decodes tag according to ASN1 standard.
+*/
 static void decodeTag(uint8_t byte, uint8_t *cls, uint8_t *type, uint8_t *nr) {
     *cls = byte & 0xc0;
     *type = byte & 0x20;
@@ -79,6 +82,10 @@ static void decodeTag(uint8_t byte, uint8_t *cls, uint8_t *type, uint8_t *nr) {
 #define NUMBER_OCTET_STRING 0x04
 #define NUMBER_SEQUENCE 0x10
 
+/**
+ * tlv buffer is 5 bytes long. First byte is used for tag.
+ * Next, up to four bytes could be used to to encode length.
+*/
 bool tlvTryDecode(uint8_t *buffer, uint32_t bufferLength, uint32_t *fieldLenght, bool *sequence,  bool *valid) {
     uint8_t class, type, number;
     decodeTag(*buffer, &class, &type, &number);

@@ -1,4 +1,4 @@
-#include "utils.h"
+#include "eos_utils.h"
 #include "os.h"
 
 
@@ -64,4 +64,65 @@ void array_hexstr(char *strbuf, const void *bin, unsigned int len) {
         bin = (const void *)((unsigned int)bin + 1);
     }
     *strbuf = 0; // EOS
+}
+
+static void decodeTag(uint8_t byte, uint8_t *cls, uint8_t *type, uint8_t *nr) {
+    *cls = byte & 0xc0;
+    *type = byte & 0x20;
+    *nr = byte & 0x1f;
+}
+
+/**
+ * Decoder supports only two numbers from BER-DER encoding: 'OctetString' and 'Sequence'.
+*/
+
+#define NUMBER_OCTET_STRING 0x04
+#define NUMBER_SEQUENCE 0x10
+
+bool tlvTryDecode(uint8_t *buffer, uint32_t bufferLength, uint32_t *fieldLenght, bool *sequence,  bool *valid) {
+    uint8_t class, type, number;
+    decodeTag(*buffer, &class, &type, &number);
+    
+    if (number != NUMBER_OCTET_STRING && number != NUMBER_SEQUENCE) {
+        return false;
+    }
+
+    if (bufferLength < 2) {
+        *valid = true;
+        return false;
+    }
+    bufferLength--;
+    buffer++;
+    // Read length
+    uint32_t length;
+    
+    uint8_t byte = *buffer;
+    if (byte & 0x80) {
+        uint8_t i;
+        uint8_t count = byte & 0x7f;
+        if (count > 4) {
+            // Its allowed to have up to 4 bytes for length
+            // [.] Tag
+            //    [. . . .] Length
+            *valid = false;
+            return false;
+        }
+        
+        if (count > bufferLength) {
+            *valid = true;
+            return false;
+        }
+        
+        length = 0;
+        for (i = 0; i < count; ++i) {
+            length = (length << 8) | *(buffer + i);
+        }
+    } else {
+        length = byte;
+    }
+    *fieldLenght = length;
+    *sequence = number == NUMBER_SEQUENCE;
+    *valid = true;
+
+    return true;
 }

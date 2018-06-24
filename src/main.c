@@ -21,7 +21,7 @@
 
 #include "os_io_seproxyhal.h"
 #include "string.h"
-#include "utils.h"
+#include "eos_utils.h"
 #include "eos_stream.h"
 
 #include "glyphs.h"

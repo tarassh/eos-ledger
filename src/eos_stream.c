@@ -2,6 +2,7 @@
 #include "os.h"
 #include "cx.h"
 #include "eos_types.h"
+#include "eos_utils.h"
 
 void initTxContext(txProcessingContext_t *context, 
                    cx_sha256_t *sha256, 
@@ -193,15 +194,7 @@ static void processCtxFreeData(txProcessingContext_t *context) {
  * 
 */
 static void processActions(txProcessingContext_t *context) {
-    if (context->state != TX_ACTIONS) {
-        PRINTF("processActions Invalid Tag\n");
-        THROW(EXCEPTION);
-    }
-
-    if (context->currentFieldLength > 0) {
-        PRINTF("processActions no action in transaction\n");
-        THROW(EXCEPTION);
-    }
+    
 }
 
 static parserStatus_e processTxInternal(txProcessingContext_t *context) {
@@ -214,20 +207,32 @@ static parserStatus_e processTxInternal(txProcessingContext_t *context) {
         }
         if (!context->processingField) {
             // While we are not processing a field, we should TLV parameters
-            bool canDecode = false;
+            bool decoded = false;
             while (context->commandLength != 0) {
+                bool valid;
                 // Feed the TLV buffer until the length can be decoded
                 context->tlvBuffer[context->tlvBufferPos++] =
                     readTxByte(context);
-                
-                if (context->tlvBufferPos == sizeof(context->tlvBuffer)) {
-                    os_memmove((uint8_t *)&context->currentFieldLength, context->tlvBuffer + 1, 4);
 
-                    canDecode = true;
+                decoded = tlvTryDecode(context->tlvBuffer, context->tlvBufferPos, 
+                    &context->currentFieldLength, &context->isSequence, &valid);
+
+                if (!valid) {
+                    PRINTF("TLV decoding error\n");
+                    return STREAM_FAULT;
+                }
+                if (decoded) {
                     break;
                 }
+
+                // Cannot decode yet
+                // Sanity check
+                if (context->tlvBufferPos == sizeof(context->tlvBuffer)) {
+                    PRINTF("TLV pre-decode logic error\n");
+                    return STREAM_FAULT;
+                }
             }
-            if (!canDecode) {
+            if (!decoded) {
                 return STREAM_PROCESSING;
             }
             context->currentFieldPos = 0;

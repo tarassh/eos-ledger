@@ -10,7 +10,6 @@ typedef struct txProcessingContent_t {
     char accountName[14];
     char actionName[14];
     char actionData[512];
-    transaction_header_t header;
 } txProcessingContent_t;
 
 typedef enum txProcessingState_e {

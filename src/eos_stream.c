@@ -436,7 +436,7 @@ static parserStatus_e processTxInternal(txProcessingContext_t *context) {
         case TLV_TX_CONTEXT_FREE_DATA:
             processCtxFreeData(context);
             break;
-            
+
         default:
             PRINTF("Invalid TLV decoder context\n");
             return STREAM_FAULT;
@@ -450,7 +450,47 @@ static parserStatus_e processTxInternal(txProcessingContext_t *context) {
  * and depends on action size. 
  * Also, Ledger Nano S have limited RAM resource, so data caching
  * could be very expencive. Due to these features and limitations
- * only some fields are cached before processing.
+ * only some fields are cached before processing. 
+ * All data is encoded by DER.ASN1 rules in plain way and serialized as a flat map.
+ * 
+ * Flat map is used in order to avoid nesting complexity.
+ * 
+ * Buffer serialization example:
+ * [chain id][header][action number (N)][action 0][action 1]...[action N][]
+ * Each field is encoded by DER rules.
+ * Chain id field will be encoded next way:
+ *  [Tag][Length][Value]
+ * [0x04][ 0x20 ][chain id as octet string]
+ * 
+ * More infomation about DER Tag Length Value encoding is here: http://luca.ntop.org/Teaching/Appunti/asn1.html.
+ * Only octet tag number is allowed. 
+ * Value is encoded as octet string.
+ * The length of the string is stored in Length byte(s)
+ * 
+ * Detailed flat map representation of incoming data:
+ * [CHAIN ID][HEADER][CTX_FREE_ACTION_NUMBER][ACTION_NUMBER][ACTION 0][TX_EXTENSION_NUMBER][CTX_FREE_ACTION_DATA_NUMBER]
+ * 
+ * CHAIN ID:
+ * [32 BYTES]
+ * 
+ * HEADER size may vary due to MAX_NET_USAGE_WORDS and DELAY_SEC serialization:
+ * [EXPIRATION][REF_BLOCK_NUM][REF_BLOCK_PREFIX][MAX_NET_USAGE_WORDS][MAX_CPU_USAGE_MS][DELAY_SEC]
+ * 
+ * CTX_FREE_ACTION_NUMBER theoretically is not fixed due to serialization. Ledger accepts only 0 as encoded value.
+ * ACTION_NUMBER theoretically is not fixed due to serialization. Ledger accepts only 1 as encoded value.
+ * 
+ * ACTION size may vary as authorization list and action data is dynamic:
+ * [ACCOUNT][NAME][AUTHORIZATION_NUMBER][AUTHORIZATION 0][AUTHORIZATION 1]..[AUTHORIZATION N][ACTION_DATA]
+ * ACCOUNT and NAME are 8 bytes long, both.
+ * AUTHORIZATION_NUMBER theoretically is not fixed due to serialization.
+ * ACTION_DATA is octet string of bytes.
+ *  
+ * AUTHORIZATION is 16 bytes long:
+ * [ACTOR][PERMISSION]
+ * ACTOR and PERMISSION are 8 bites long, both.
+ * 
+ * TX_EXTENSION_NUMBER theoretically is not fixed due to serialization. Ledger accepts only 0 as encoded value.
+ * CTX_FREE_ACTION_DATA_NUMBER theoretically is not fixed due to serialization. Ledger accepts only 0 as encoded value.
 */
 parserStatus_e parseTx(txProcessingContext_t *context, uint8_t *buffer, uint32_t length) {
     parserStatus_e result;

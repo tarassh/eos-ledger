@@ -10,6 +10,6 @@ unsigned char buffer_to_encoded_base58(unsigned char *in, unsigned char length,
 
 void array_hexstr(char *strbuf, const void *bin, unsigned int len);
 
-bool tlvTryDecode(uint8_t *buffer, uint32_t bufferLength, uint32_t *fieldLenght, bool *sequence,  bool *valid);
+bool tlvTryDecode(uint8_t *buffer, uint32_t bufferLength, uint32_t *fieldLenght, bool *valid);
 
 #endif

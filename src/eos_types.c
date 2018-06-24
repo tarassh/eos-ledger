@@ -125,11 +125,11 @@ uint8_t pack_fc_unsigned_int(fc_unsigned_int_t value, uint8_t *out) {
     return i;
 }
 
-fc_unsigned_int_t uppack_fc_unsigned_int(uint8_t *in) {
+fc_unsigned_int_t unpack_fc_unsigned_int(uint8_t *in, uint32_t length) {
     uint64_t v = 0; char b = 0; uint8_t by = 0;
     do {
-        b = *in;
-        v |= ((uint32_t)(((uint8_t)b) & 0x7f)) << by;
+        b = *in; ++in;
+        v |= (uint32_t)((uint8_t)b & 0x7f) << by;
         by += 7;
     } while( ((uint8_t)b) & 0x80 && by < 32 );
     

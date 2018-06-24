@@ -76,21 +76,22 @@ static void decodeTag(uint8_t byte, uint8_t *cls, uint8_t *type, uint8_t *nr) {
 }
 
 /**
- * Decoder supports only two numbers from BER-DER encoding: 'OctetString' and 'Sequence'.
+ * Decoder supports only 'OctetString' from DER encoding.
+ * To get more information about DER encoding go to
+ * http://luca.ntop.org/Teaching/Appunti/asn1.html.
 */
 
 #define NUMBER_OCTET_STRING 0x04
-#define NUMBER_SEQUENCE 0x10
 
 /**
  * tlv buffer is 5 bytes long. First byte is used for tag.
  * Next, up to four bytes could be used to to encode length.
 */
-bool tlvTryDecode(uint8_t *buffer, uint32_t bufferLength, uint32_t *fieldLenght, bool *sequence,  bool *valid) {
+bool tlvTryDecode(uint8_t *buffer, uint32_t bufferLength, uint32_t *fieldLenght, bool *valid) {
     uint8_t class, type, number;
     decodeTag(*buffer, &class, &type, &number);
     
-    if (number != NUMBER_OCTET_STRING && number != NUMBER_SEQUENCE) {
+    if (number != NUMBER_OCTET_STRING) {
         return false;
     }
 
@@ -128,7 +129,6 @@ bool tlvTryDecode(uint8_t *buffer, uint32_t bufferLength, uint32_t *fieldLenght,
         length = byte;
     }
     *fieldLenght = length;
-    *sequence = number == NUMBER_SEQUENCE;
     *valid = true;
 
     return true;

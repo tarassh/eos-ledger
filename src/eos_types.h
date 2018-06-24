@@ -35,7 +35,7 @@ typedef struct asset_t {
 } asset_t;
 
 uint8_t pack_fc_unsigned_int(fc_unsigned_int_t value, uint8_t *out);
-fc_unsigned_int_t uppack_fc_unsigned_int(uint8_t *in);
+fc_unsigned_int_t unpack_fc_unsigned_int(uint8_t *in, uint32_t length);
 
 uint8_t name_to_string(name_t value, char *out, uint32_t size);
 

@@ -35,78 +35,118 @@ static void hashTxData(txProcessingContext_t *context, uint8_t *buffer, uint32_t
 }
 
 /**
- * Context free actions are not supported. Decision has been made based on
- * observation. Nevertheless, the '0' size value should be hashed as it is
- * a part of signining information.
+ * Process all fields that do not requre any processing except hashing.
+ * The data comes in by chucks, so it may happen that buffer may contain 
+ * incomplete data for particular field. Function designed to process 
+ * everything until it receives all data for a particular field 
+ * and after that will move to next field.
 */
-static void processCtxFreeActions(txProcessingContext_t *context) {
-    if (!context->isSequence) {
-        PRINTF("processCtxFreeActions Invalid type for CTX_FREE_ACTIONS\n");
-        THROW(EXCEPTION);
+static void processField(txProcessingContext_t *context) {
+    if (context->currentFieldPos < context->currentFieldLength) {
+        uint32_t length = 
+            (context->commandLength <
+                     ((context->currentFieldLength - context->currentFieldPos))
+                ? context->commandLength
+                : context->currentFieldLength - context->currentFieldPos);
+
+        hashTxData(context, context->workBuffer, length);
+
+        context->workBuffer += length;
+        context->commandLength -= length;
+        context->currentFieldPos += length;
     }
 
-    if (context->currentFieldLength != 0) {
-        PRINTF("processCtxFreeActions Context free actions are not supported\n");
-        THROW(EXCEPTION);
+    if (context->currentFieldPos == context->currentFieldLength) {
+        context->state++;
+        context->processingField = false;
     }
-
-    uint8_t tmp[16] = {0};
-    uint8_t packedBytes = pack_fc_unsigned_int(0, tmp);
-    hashTxData(context, tmp, packedBytes);
-
-    // Move to next state
-    context->state++;
-    context->processingField = false;
 }
 
 /**
- * Transaction extensions are not supported. Decision has been made based on
- * observations. Nevertheless, the '0' size value should be hashed as it is
- * a part of signing infornation.
+ * Process Context Free Action Number Field. Except hashing the data, function
+ * caches an incomming data. So, when all bytes for particulat field are received
+ * do additional processing: Read actual number of actions encoded in buffer.
+ * Throw exception if number is not '0'.
 */
-static void processTxExtensions(txProcessingContext_t *context) {
-    if (!context->isSequence) {
-        PRINTF("processTxExtensions Invalid type for TX_EXTENSIONS\n");
-        THROW(EXCEPTION);
+static void processCtxFreeActionNumber(txProcessingContext_t *context) {
+    if (context->currentFieldPos < context->currentFieldLength) {
+        uint32_t length = 
+            (context->commandLength <
+                     ((context->currentFieldLength - context->currentFieldPos))
+                ? context->commandLength
+                : context->currentFieldLength - context->currentFieldPos);
+
+        hashTxData(context, context->workBuffer, length);
+
+        // Store data into a buffer
+        os_memmove(context->sizeBuffer + context->sizeBufferPos, context->workBuffer, length);
+        context->sizeBufferPos += length;
+
+        context->workBuffer += length;
+        context->commandLength -= length;
+        context->currentFieldPos += length;
     }
 
-    if (context->currentFieldLength != 0) {
-        PRINTF("processTxExtensions Transaction extensions are not supported\n");
-        THROW(EXCEPTION);
+    if (context->currentFieldPos == context->currentFieldLength) {
+        if (unpack_fc_unsigned_int(context->sizeBuffer, context->sizeBufferPos + 1) != 0) {
+            PRINTF("processCtxFreeAction Action Number must be 0\n");
+            THROW(EXCEPTION);
+        }
+        // Reset size buffer
+        context->sizeBufferPos = 0;
+        os_memset(context->sizeBuffer, 0, sizeof(context->sizeBuffer));
+
+        // Move to next state
+        context->state++;
+        context->processingField = false;
     }
-
-    uint8_t tmp[16] = {0};
-    uint8_t packedBytes = pack_fc_unsigned_int(0, tmp);
-    hashTxData(context, tmp, packedBytes);
-
-    // Move to next state
-    context->state++;
-    context->processingField = false;
 }
 
 /**
- * Context free actions are not supported and a corresponding data as well.
- * Hash 32 bytes long '0' value buffer instead.
+ * Process Action Number Field. Except hashing the data, function
+ * caches an incomming data. So, when all bytes for particulat field are received
+ * do additional processing: Read actual number of actions encoded in buffer.
+ * Throw exception if number is not '1'.
 */
-static void processCtxFreeData(txProcessingContext_t *context) {
-    if (!context->isSequence) {
-        PRINTF("processCtxFreeData Invalid type for CTX_FREE_DATA\n");
-        THROW(EXCEPTION);
+static void processActionNumber(txProcessingContext_t *context) {
+    if (context->currentFieldPos < context->currentFieldLength) {
+        uint32_t length = 
+            (context->commandLength <
+                     ((context->currentFieldLength - context->currentFieldPos))
+                ? context->commandLength
+                : context->currentFieldLength - context->currentFieldPos);
+
+        hashTxData(context, context->workBuffer, length);
+
+        // Store data into a buffer
+        os_memmove(context->sizeBuffer + context->sizeBufferPos, context->workBuffer, length);
+        context->sizeBufferPos += length;
+
+        context->workBuffer += length;
+        context->commandLength -= length;
+        context->currentFieldPos += length;
     }
 
-    if (context->currentFieldLength != 0) {
-        PRINTF("processCtxFreeData Context free data is not supported\n");
-        THROW(EXCEPTION);
+    if (context->currentFieldPos == context->currentFieldLength) {
+        context->currentActionNumber = unpack_fc_unsigned_int(context->sizeBuffer, context->sizeBufferPos + 1);
+        if (context->currentActionNumber != 1) {
+            PRINTF("processActionNumber Action Number must be 1\n");
+            THROW(EXCEPTION);
+        }
+        // Reset size buffer
+        context->currentActionIndex = 0;
+        context->sizeBufferPos = 0;
+        os_memset(context->sizeBuffer, 0, sizeof(context->sizeBuffer));
+
+        context->state++;
+        context->processingField = false;
     }
-
-    uint8_t empty[32] = {0};
-    hashTxData(context, empty, sizeof(empty));
-
-    // Move to next state
-    context->state++;
-    context->processingField = false;
 }
 
+/**
+ * Process Action Account Field. Cache a data of the field in order to 
+ * display it for validation.
+*/
 static void processActionAccount(txProcessingContext_t *context) {
     if (context->currentFieldPos < context->currentFieldLength) {
         uint32_t length = 
@@ -125,13 +165,17 @@ static void processActionAccount(txProcessingContext_t *context) {
     }
 
     if (context->currentFieldPos == context->currentFieldLength) {
-        context->subState++;
+        context->state++;
         context->processingField = false;
 
         name_to_string(context->nameTypeBuffer, context->content->accountName, sizeof(context->content->accountName));
     }
 }
 
+/**
+ * Process Action Name Field. Cache a data of the field in order to 
+ * display it for validation.
+*/
 static void processActionName(txProcessingContext_t *context) {
     if (context->currentFieldPos < context->currentFieldLength) {
         uint32_t length = 
@@ -150,14 +194,54 @@ static void processActionName(txProcessingContext_t *context) {
     }
 
     if (context->currentFieldPos == context->currentFieldLength) {
-        context->subState++;
+        context->state++;
         context->processingField = false;
 
         name_to_string(context->nameTypeBuffer, context->content->actionName, sizeof(context->content->actionName));
     }
 }
 
-static void processField(txProcessingContext_t *context) {
+/**
+ * Process Authorization Number Field. Initializa context action number 
+ * index and context action number. 
+*/
+static void processAuthorizastionNumber(txProcessingContext_t *context) {
+    if (context->currentFieldPos < context->currentFieldLength) {
+        uint32_t length = 
+            (context->commandLength <
+                     ((context->currentFieldLength - context->currentFieldPos))
+                ? context->commandLength
+                : context->currentFieldLength - context->currentFieldPos);
+
+        hashTxData(context, context->workBuffer, length);
+
+        // Store data into a buffer
+        os_memmove(context->sizeBuffer + context->sizeBufferPos, context->workBuffer, length);
+        context->sizeBufferPos += length;
+
+        context->workBuffer += length;
+        context->commandLength -= length;
+        context->currentFieldPos += length;
+    }
+
+    if (context->currentFieldPos == context->currentFieldLength) {
+        context->currentAutorizationNumber = unpack_fc_unsigned_int(context->sizeBuffer, context->sizeBufferPos + 1);
+        context->currentAutorizationIndex = 0;
+        // Reset size buffer
+        context->sizeBufferPos = 0;
+        os_memset(context->sizeBuffer, 0, sizeof(context->sizeBuffer));
+
+        // Move to next state
+        context->state++;
+        context->processingField = false;
+    }
+}
+
+/**
+ * Process Authorization Permission Field. When the field is processed 
+ * start over authorization processing if the there is data for that.
+*/
+static void processAuthorizationPermission(txProcessingContext_t *context) {
     if (context->currentFieldPos < context->currentFieldLength) {
         uint32_t length = 
             (context->commandLength <
@@ -173,11 +257,25 @@ static void processField(txProcessingContext_t *context) {
     }
 
     if (context->currentFieldPos == context->currentFieldLength) {
-        context->subState++;
+        context->currentAutorizationIndex++;
+        // Reset size buffer
+        context->sizeBufferPos = 0;
+        os_memset(context->sizeBuffer, 0, sizeof(context->sizeBuffer));
+
+        // Start over reading Authorization data or move to the next state
+        // if all authorization data have beed read
+        if (context->currentAutorizationIndex != context->currentAutorizationNumber) {
+            context->state = TLV_AUTH_ACTOR;
+        } else {
+            context->state++;
+        }
         context->processingField = false;
     }
 }
 
+/**
+ * Process current action data field and store in into data buffer.
+*/
 static void processActionData(txProcessingContext_t *context) {
     if (context->currentFieldLength > 512) {
         PRINTF("processActionData data overflow\n");
@@ -200,9 +298,51 @@ static void processActionData(txProcessingContext_t *context) {
     }
 
     if (context->currentFieldPos == context->currentFieldLength) {
-        context->subState++;
+        // We processed last action field
+        context->currentActionIndex = 0;
+        context->currentActionNumber = 0;
+
+        context->state++;
         context->processingField = false;
     }
+}
+
+/**
+ * Transaction extensions are not supported. Decision has been made based on
+ * observations. Nevertheless, the '0' size value should be hashed as it is
+ * a part of signing infornation.
+*/
+static void processTxExtensions(txProcessingContext_t *context) {
+    if (context->currentFieldLength != 0) {
+        PRINTF("processTxExtensions Transaction extensions are not supported\n");
+        THROW(EXCEPTION);
+    }
+
+    uint8_t tmp[16] = {0};
+    uint8_t packedBytes = pack_fc_unsigned_int(0, tmp);
+    hashTxData(context, tmp, packedBytes);
+
+    // Move to next state
+    context->state++;
+    context->processingField = false;
+}
+
+/**
+ * Context free actions are not supported and a corresponding data as well.
+ * Hash 32 bytes long '0' value buffer instead.
+*/
+static void processCtxFreeData(txProcessingContext_t *context) {
+    if (context->currentFieldLength != 0) {
+        PRINTF("processCtxFreeData Context free data is not supported\n");
+        THROW(EXCEPTION);
+    }
+
+    uint8_t empty[32] = {0};
+    hashTxData(context, empty, sizeof(empty));
+
+    // Move to next state
+    context->state++;
+    context->processingField = false;
 }
 
 static parserStatus_e processTxInternal(txProcessingContext_t *context) {
@@ -223,7 +363,7 @@ static parserStatus_e processTxInternal(txProcessingContext_t *context) {
                     readTxByte(context);
 
                 decoded = tlvTryDecode(context->tlvBuffer, context->tlvBufferPos, 
-                    &context->currentFieldLength, &context->isSequence, &valid);
+                    &context->currentFieldLength, &valid);
 
                 if (!valid) {
                     PRINTF("TLV decoding error\n");
@@ -257,34 +397,46 @@ static parserStatus_e processTxInternal(txProcessingContext_t *context) {
         case TLV_TX_HEADER_DELAY_SEC:
             processField(context);
             break;
-        case TLV_TX_CONTEXT_FREE_ACTIONS:
-            processCtxFreeActions(context);
+
+        case TLV_TX_CONTEXT_FREE_ACTION_NUMBER:
+            processCtxFreeActionNumber(context);
             break;
 
         case TLV_ACTION_NUMBER:
-            processField(context);
+            processActionNumber(context);
             break;
+
         case TLV_ACTION_ACCOUNT:
             processActionAccount(context);
             break;
+
         case TLV_ACTION_NAME:
             processActionName(context);
             break;
 
         case TLV_AUTH_NUMBER:
+            processAuthorizastionNumber(context);
+            break;
+
         case TLV_AUTH_ACTOR:
-        case TLV_AUTH_PERMISSION:
             processField(context);
+            break;
+        case TLV_AUTH_PERMISSION:
+            processAuthorizationPermission(context);
+            break;
         
         case TLV_ACTION_DATA:
             processActionData(context);
             break;
-        case TLV_TX_TRANSACTION_EXTENSIONS:
-            processTxExtensions(context);
+
+        case TLV_TX_TRANSACTION_EXTENSION_NUMBER:
+            processField(context);
             break;
+
         case TLV_TX_CONTEXT_FREE_DATA:
             processCtxFreeData(context);
             break;
+            
         default:
             PRINTF("Invalid TLV decoder context\n");
             return STREAM_FAULT;

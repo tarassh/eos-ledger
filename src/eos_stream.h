@@ -13,6 +13,11 @@ typedef struct txProcessingContent_t {
     transaction_header_t header;
 } txProcessingContent_t;
 
+typedef enum txProcessingSubState_e {
+    TLV_ACTION_NONE = 0,
+    
+} txProcessingSubState_e;
+
 typedef enum txProcessingState_e {
     TLV_TX_NONE = 0x0, 
     TLV_TX_CHAIN_ID = 0x1,
@@ -23,7 +28,13 @@ typedef enum txProcessingState_e {
     TLV_TX_HEADER_MAX_CPU_USAGE_MS,
     TLV_TX_HEADER_DELAY_SEC,
     TLV_TX_CONTEXT_FREE_ACTIONS,
-    TLV_TX_ACTIONS,
+    TLV_ACTION_NUMBER,
+    TLV_ACTION_ACCOUNT,
+    TLV_ACTION_NAME,
+    TLV_AUTH_NUMBER,
+    TLV_AUTH_ACTOR,
+    TLV_AUTH_PERMISSION,
+    TLV_ACTION_DATA,
     TLV_TX_TRANSACTION_EXTENSIONS,
     TLV_TX_CONTEXT_FREE_DATA,
     TLV_TX_DONE
@@ -31,16 +42,19 @@ typedef enum txProcessingState_e {
 
 typedef struct txProcessingContext_t {
     txProcessingState_e state;
+    txProcessingSubState_e subState;
     cx_sha256_t *sha256;
     uint32_t currentFieldLength;
     uint32_t currentFieldPos;
+    uint32_t currentActionIndex;
+    uint32_t currentActionsNumber;
     bool processingField;
     bool isSequence;
-    uint8_t tlvBuffer[4];
+    uint8_t tlvBuffer[5];
     uint32_t tlvBufferPos;
-    fc_unsigned_int_t tempHeaderValue;
     uint8_t *workBuffer;
     uint32_t commandLength;
+    name_t nameTypeBuffer;
     txProcessingContent_t *content;
 } txProcessingContext_t;
 

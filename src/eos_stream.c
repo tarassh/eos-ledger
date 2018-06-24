@@ -35,124 +35,6 @@ static void hashTxData(txProcessingContext_t *context, uint8_t *buffer, uint32_t
 }
 
 /**
- * Chain id can be processed on the fly. Every received chunck 
- * of chain id is hashed without caching.
-*/
-static void processChainId(txProcessingContext_t *context) {
-    if (context->isSequence) {
-        PRINTF("processChainId Invalid type for CHAIN_ID\n");
-        THROW(EXCEPTION);
-    }
-
-    if (sizeof(chain_id_t) != context->currentFieldLength) {
-        PRINTF("processChainId processChainId Invalid size for CHAIN_ID\n");
-        THROW(EXCEPTION);
-    }
-
-    if (context->currentFieldPos < context->currentFieldLength) {
-        uint32_t length = 
-            (context->commandLength <
-                     ((context->currentFieldLength - context->currentFieldPos))
-                ? context->commandLength
-                : context->currentFieldLength - context->currentFieldPos);
-        
-        hashTxData(context, context->workBuffer, length);
-        context->workBuffer += length;
-        context->commandLength -= length;
-        context->currentFieldPos += length;
-    }
-
-    if (context->currentFieldPos == context->currentFieldLength) {
-        context->state++;
-        context->processingField = false;
-    }
-}
-
-/**
- * Some header fields can be processed in the same way.
-*/
-static void processHeaderField(txProcessingContext_t *context) {
-    if (context->isSequence) {
-        PRINTF("processHeaderField Invalid type for HEADER FIELD\n");
-        THROW(EXCEPTION);
-    }
-    if ((context->state == TLV_TX_HEADER_EXPITATION || 
-        context->state == TLV_TX_HEADER_REF_BLOCK_PREFIX) && 
-        context->currentFieldLength != sizeof(uint32_t))  {
-        PRINTF("processHeaderField Invalid length for HEADER_EXPITATION or HEADER_REF_BLOCK_PREFIX\n");
-        THROW(EXCEPTION);
-    }
-    if ((context->state == TLV_TX_HEADER_REF_BLOCK_NUM) && 
-        context->currentFieldLength != sizeof(uint16_t)) {
-        PRINTF("processHeaderField Invalid length for HEADER_REF_BLOCK_NUM\n");
-        THROW(EXCEPTION);
-    }
-    if ((context->state == TLV_TX_HEADER_MAX_CPU_USAGE_MS) &&
-        context->currentFieldLength != sizeof(uint8_t)) {
-        PRINTF("processHeaderField Invalid length for max_cpu_usage_ms\n");
-        THROW(EXCEPTION);
-    }
-
-    if (context->currentFieldPos < context->currentFieldLength) {
-        uint32_t length = 
-            (context->commandLength <
-                     ((context->currentFieldLength - context->currentFieldPos))
-                ? context->commandLength
-                : context->currentFieldLength - context->currentFieldPos);
-        
-        hashTxData(context, context->workBuffer, length);
-        context->workBuffer += length;
-        context->commandLength -= length;
-        context->currentFieldPos += length;
-    }
-
-    if (context->currentFieldPos == context->currentFieldLength) {
-        context->state++;
-        context->processingField = false;
-    }
-}
-
-/**
- * Some header fields should be cached before hashing.
-*/
-static void processHeaderField2(txProcessingContext_t *context) {
-    if (context->isSequence) {
-        PRINTF("processHeaderField2 Invalid type for HEADER FIELD\n");
-        THROW(EXCEPTION);
-    }
-    if ((context->state == TLV_TX_HEADER_MAX_NET_USAGE_WORDS || 
-        context->state == TLV_TX_HEADER_DELAY_SEC) && 
-        context->currentFieldLength != sizeof(fc_unsigned_int_t))  {
-        PRINTF("processHeaderField2 Invalid length for HEADER_MAX_NET_USAGE_WORDS or HEADER_DELAY_SEC\n");
-        THROW(EXCEPTION);
-    }
-
-    if (context->currentFieldPos < context->currentFieldLength) {
-        uint32_t length = 
-            (context->commandLength <
-                     ((context->currentFieldLength - context->currentFieldPos))
-                ? context->commandLength
-                : context->currentFieldLength - context->currentFieldPos);
-
-        uint8_t *fieldByteOffset = ((uint8_t *)(context->tempHeaderValue) + context->currentFieldPos);
-        os_memmove(fieldByteOffset, context->workBuffer, length);
-        
-        context->workBuffer += length;
-        context->commandLength -= length;
-        context->currentFieldPos += length;
-    }
-
-    if (context->currentFieldPos == context->currentFieldLength) {
-        context->state++;
-        context->processingField = false;
-
-        uint8_t tmp[16] = { 0 };
-        uint32_t length = pack_fc_unsigned_int(context->tempHeaderValue, tmp);
-        hashTxData(context, tmp, length);
-    }
-}
-
-/**
  * Context free actions are not supported. Decision has been made based on
  * observation. Nevertheless, the '0' size value should be hashed as it is
  * a part of signining information.
@@ -225,21 +107,102 @@ static void processCtxFreeData(txProcessingContext_t *context) {
     context->processingField = false;
 }
 
-/**
- * 
-*/
-static void processActions(txProcessingContext_t *context) {
-    if (!context->isSequence) {
-        PRINTF("processActions Invalid type for ACTIONS\n");
+static void processActionAccount(txProcessingContext_t *context) {
+    if (context->currentFieldPos < context->currentFieldLength) {
+        uint32_t length = 
+            (context->commandLength <
+                     ((context->currentFieldLength - context->currentFieldPos))
+                ? context->commandLength
+                : context->currentFieldLength - context->currentFieldPos);
+
+        hashTxData(context, context->workBuffer, length);
+        uint8_t *pointer = ((uint8_t *)(&context->nameTypeBuffer)) + context->currentFieldPos;
+        os_memmove(pointer, context->workBuffer, length);
+
+        context->workBuffer += length;
+        context->commandLength -= length;
+        context->currentFieldPos += length;
+    }
+
+    if (context->currentFieldPos == context->currentFieldLength) {
+        context->subState++;
+        context->processingField = false;
+
+        name_to_string(context->nameTypeBuffer, context->content->accountName, sizeof(context->content->accountName));
+    }
+}
+
+static void processActionName(txProcessingContext_t *context) {
+    if (context->currentFieldPos < context->currentFieldLength) {
+        uint32_t length = 
+            (context->commandLength <
+                     ((context->currentFieldLength - context->currentFieldPos))
+                ? context->commandLength
+                : context->currentFieldLength - context->currentFieldPos);
+
+        hashTxData(context, context->workBuffer, length);
+        uint8_t *pointer = ((uint8_t *)(&context->nameTypeBuffer)) + context->currentFieldPos;
+        os_memmove(pointer, context->workBuffer, length);
+
+        context->workBuffer += length;
+        context->commandLength -= length;
+        context->currentFieldPos += length;
+    }
+
+    if (context->currentFieldPos == context->currentFieldLength) {
+        context->subState++;
+        context->processingField = false;
+
+        name_to_string(context->nameTypeBuffer, context->content->actionName, sizeof(context->content->actionName));
+    }
+}
+
+static void processField(txProcessingContext_t *context) {
+    if (context->currentFieldPos < context->currentFieldLength) {
+        uint32_t length = 
+            (context->commandLength <
+                     ((context->currentFieldLength - context->currentFieldPos))
+                ? context->commandLength
+                : context->currentFieldLength - context->currentFieldPos);
+
+        hashTxData(context, context->workBuffer, length);
+
+        context->workBuffer += length;
+        context->commandLength -= length;
+        context->currentFieldPos += length;
+    }
+
+    if (context->currentFieldPos == context->currentFieldLength) {
+        context->subState++;
+        context->processingField = false;
+    }
+}
+
+static void processActionData(txProcessingContext_t *context) {
+    if (context->currentFieldLength > 512) {
+        PRINTF("processActionData data overflow\n");
         THROW(EXCEPTION);
     }
 
-    if (context->currentFieldLength != 1) {
-        PRINTF("processActions supports only one action at the moment\n");
-        THROW(EXCEPTION);
+    if (context->currentFieldPos < context->currentFieldLength) {
+        uint32_t length = 
+            (context->commandLength <
+                     ((context->currentFieldLength - context->currentFieldPos))
+                ? context->commandLength
+                : context->currentFieldLength - context->currentFieldPos);
+
+        hashTxData(context, context->workBuffer, length);
+        os_memmove(context->content->actionData + context->currentFieldPos, context->workBuffer, length);
+
+        context->workBuffer += length;
+        context->commandLength -= length;
+        context->currentFieldPos += length;
     }
 
-
+    if (context->currentFieldPos == context->currentFieldLength) {
+        context->subState++;
+        context->processingField = false;
+    }
 }
 
 static parserStatus_e processTxInternal(txProcessingContext_t *context) {
@@ -286,23 +249,35 @@ static parserStatus_e processTxInternal(txProcessingContext_t *context) {
         }
         switch (context->state) {
         case TLV_TX_CHAIN_ID:
-            processChainId(context);
-            break;
         case TLV_TX_HEADER_EXPITATION:
         case TLV_TX_HEADER_REF_BLOCK_NUM:
         case TLV_TX_HEADER_REF_BLOCK_PREFIX:
         case TLV_TX_HEADER_MAX_CPU_USAGE_MS:
-            processHeaderField(context);
-            break;
         case TLV_TX_HEADER_MAX_NET_USAGE_WORDS:
         case TLV_TX_HEADER_DELAY_SEC:
-            processHeaderField2(context);
+            processField(context);
             break;
         case TLV_TX_CONTEXT_FREE_ACTIONS:
             processCtxFreeActions(context);
             break;
-        case TLV_TX_ACTIONS:
-            processActions(context);
+
+        case TLV_ACTION_NUMBER:
+            processField(context);
+            break;
+        case TLV_ACTION_ACCOUNT:
+            processActionAccount(context);
+            break;
+        case TLV_ACTION_NAME:
+            processActionName(context);
+            break;
+
+        case TLV_AUTH_NUMBER:
+        case TLV_AUTH_ACTOR:
+        case TLV_AUTH_PERMISSION:
+            processField(context);
+        
+        case TLV_ACTION_DATA:
+            processActionData(context);
             break;
         case TLV_TX_TRANSACTION_EXTENSIONS:
             processTxExtensions(context);
@@ -311,7 +286,7 @@ static parserStatus_e processTxInternal(txProcessingContext_t *context) {
             processCtxFreeData(context);
             break;
         default:
-            PRINTF("Invalid RLP decoder context\n");
+            PRINTF("Invalid TLV decoder context\n");
             return STREAM_FAULT;
         }
     }

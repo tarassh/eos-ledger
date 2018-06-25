@@ -5,6 +5,20 @@
 
 static const char* charmap = ".12345abcdefghijklmnopqrstuvwxyz";
 
+name_t buffer_to_name_type(uint8_t *in, uint32_t size) {
+    if (size != 8) {
+        THROW(EXCEPTION);
+    }
+
+    name_t value;
+    uint8_t *p = &value;
+    for (int i = 0; i < 8; ++i) {
+        os_memmove(p + (7-i), in + i, 1);
+    }
+
+    return value;
+}
+
 uint8_t name_to_string(name_t value, char *out, uint32_t size) {
     if (size < 13) {
         THROW(EXCEPTION_OVERFLOW);
@@ -12,17 +26,20 @@ uint8_t name_to_string(name_t value, char *out, uint32_t size) {
 
     uint32_t i = 0;
     uint32_t actual_size = 13;
-    char tmp[13] = {'.'};
+    uint64_t tmp = value;
+    char str[13] = {'.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'};
 
     for (i = 0; i <= 12; ++i) {
-        char c = charmap[value & (i == 0 ? 0x0f : 0x1f)];
-        tmp[12 - i] = c;
-        value >>= (i == 0 ? 4 : 5);
+        char c = charmap[tmp & (i == 0 ? 0x0f : 0x1f)];
+        str[12 - i] = c;
+        tmp >>= (i == 0 ? 4 : 5);
     }
 
-    while (actual_size != 0 && tmp[--actual_size] == '.');
+    while (actual_size != 0 && str[actual_size-1] == '.'){
+        actual_size--;
+    }
 
-    os_memmove(out, tmp, actual_size);
+    os_memmove(out, str, actual_size);
     return actual_size;
 }
 

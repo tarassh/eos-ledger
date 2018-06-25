@@ -49,7 +49,7 @@ typedef struct txProcessingContext_t {
     uint32_t tlvBufferPos;
     uint8_t *workBuffer;
     uint32_t commandLength;
-    name_t nameTypeBuffer;
+    uint8_t nameTypeBuffer[8];
     uint8_t sizeBuffer[12];
     uint32_t sizeBufferPos;
     txProcessingContent_t *content;

@@ -156,8 +156,7 @@ static void processActionAccount(txProcessingContext_t *context) {
                 : context->currentFieldLength - context->currentFieldPos);
 
         hashTxData(context, context->workBuffer, length);
-        uint8_t *pointer = ((uint8_t *)(&context->nameTypeBuffer)) + context->currentFieldPos;
-        os_memmove(pointer, context->workBuffer, length);
+        os_memmove(context->nameTypeBuffer + context->currentFieldPos, context->workBuffer, length);
 
         context->workBuffer += length;
         context->commandLength -= length;
@@ -168,7 +167,9 @@ static void processActionAccount(txProcessingContext_t *context) {
         context->state++;
         context->processingField = false;
 
-        name_to_string(context->nameTypeBuffer, context->content->accountName, sizeof(context->content->accountName));
+        name_t account = buffer_to_name_type(context->nameTypeBuffer, sizeof(context->nameTypeBuffer));
+        os_memset(context->content->accountName, 0, sizeof(context->content->accountName));
+        name_to_string(account, context->content->accountName, sizeof(context->content->accountName));
     }
 }
 
@@ -185,8 +186,7 @@ static void processActionName(txProcessingContext_t *context) {
                 : context->currentFieldLength - context->currentFieldPos);
 
         hashTxData(context, context->workBuffer, length);
-        uint8_t *pointer = ((uint8_t *)(&context->nameTypeBuffer)) + context->currentFieldPos;
-        os_memmove(pointer, context->workBuffer, length);
+        os_memmove(context->nameTypeBuffer + context->currentFieldPos, context->workBuffer, length);
 
         context->workBuffer += length;
         context->commandLength -= length;
@@ -197,7 +197,9 @@ static void processActionName(txProcessingContext_t *context) {
         context->state++;
         context->processingField = false;
 
-        name_to_string(context->nameTypeBuffer, context->content->actionName, sizeof(context->content->actionName));
+        name_t name = buffer_to_name_type(context->nameTypeBuffer, sizeof(context->nameTypeBuffer));
+        os_memset(context->content->actionName, 0, sizeof(context->content->actionName));
+        name_to_string(name, context->content->actionName, sizeof(context->content->actionName));
     }
 }
 

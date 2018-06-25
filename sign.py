@@ -226,5 +226,5 @@ while offset != singSize:
 
     offset += len(chunk)
     result = dongle.exchange(bytes(apdu))
-    print result
+    print binascii.hexlify(result)
 

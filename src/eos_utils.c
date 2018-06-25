@@ -92,6 +92,7 @@ bool tlvTryDecode(uint8_t *buffer, uint32_t bufferLength, uint32_t *fieldLenght,
     decodeTag(*buffer, &class, &type, &number);
     
     if (number != NUMBER_OCTET_STRING) {
+        *valid = false;
         return false;
     }
 
@@ -103,7 +104,6 @@ bool tlvTryDecode(uint8_t *buffer, uint32_t bufferLength, uint32_t *fieldLenght,
     buffer++;
     // Read length
     uint32_t length;
-    
     uint8_t byte = *buffer;
     if (byte & 0x80) {
         uint8_t i;

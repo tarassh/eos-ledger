@@ -6,7 +6,7 @@
 static const char* charmap = ".12345abcdefghijklmnopqrstuvwxyz";
 
 uint8_t name_to_string(name_t value, char *out, uint32_t size) {
-    if (size > 13) {
+    if (size < 13) {
         THROW(EXCEPTION_OVERFLOW);
     }
 

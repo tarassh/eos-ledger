@@ -793,7 +793,7 @@ void handleSign(uint8_t p1, uint8_t p2, uint8_t *workBuffer,
     if (p2 != 0) {
         THROW(0x6B00);
     }
-    if (txProcessingCtx.state == TLV_TX_NONE) {
+    if (txProcessingCtx.state == TLV_NONE) {
         PRINTF("Parser not initialized\n");
         THROW(0x6985);
     }

@@ -10,7 +10,7 @@ void initTxContext(txProcessingContext_t *context,
     os_memset(context, 0, sizeof(txProcessingContext_t));
     context->sha256 = sha256;
     context->content = processingContent;
-    context->state = TLV_TX_CHAIN_ID;
+    context->state = TLV_CHAIN_ID;
     cx_sha256_init(context->sha256);
 }
 
@@ -63,12 +63,12 @@ static void processField(txProcessingContext_t *context) {
 }
 
 /**
- * Process Context Free Action Number Field. Except hashing the data, function
+ * Process Size fields that are expected to have Zero value. Except hashing the data, function
  * caches an incomming data. So, when all bytes for particulat field are received
  * do additional processing: Read actual number of actions encoded in buffer.
  * Throw exception if number is not '0'.
 */
-static void processCtxFreeActionNumber(txProcessingContext_t *context) {
+static void processZeroSizeField(txProcessingContext_t *context) {
     if (context->currentFieldPos < context->currentFieldLength) {
         uint32_t length = 
             (context->commandLength <
@@ -108,7 +108,7 @@ static void processCtxFreeActionNumber(txProcessingContext_t *context) {
  * do additional processing: Read actual number of actions encoded in buffer.
  * Throw exception if number is not '1'.
 */
-static void processActionNumber(txProcessingContext_t *context) {
+static void processActionListSizeField(txProcessingContext_t *context) {
     if (context->currentFieldPos < context->currentFieldLength) {
         uint32_t length = 
             (context->commandLength <
@@ -130,7 +130,7 @@ static void processActionNumber(txProcessingContext_t *context) {
     if (context->currentFieldPos == context->currentFieldLength) {
         context->currentActionNumber = unpack_fc_unsigned_int(context->sizeBuffer, context->sizeBufferPos + 1);
         if (context->currentActionNumber != 1) {
-            PRINTF("processActionNumber Action Number must be 1\n");
+            PRINTF("processActionListSizeField Action Number must be 1\n");
             THROW(EXCEPTION);
         }
         // Reset size buffer
@@ -205,7 +205,7 @@ static void processActionName(txProcessingContext_t *context) {
  * Process Authorization Number Field. Initializa context action number 
  * index and context action number. 
 */
-static void processAuthorizastionNumber(txProcessingContext_t *context) {
+static void processAuthorizationListSizeField(txProcessingContext_t *context) {
     if (context->currentFieldPos < context->currentFieldLength) {
         uint32_t length = 
             (context->commandLength <
@@ -265,7 +265,7 @@ static void processAuthorizationPermission(txProcessingContext_t *context) {
         // Start over reading Authorization data or move to the next state
         // if all authorization data have beed read
         if (context->currentAutorizationIndex != context->currentAutorizationNumber) {
-            context->state = TLV_AUTH_ACTOR;
+            context->state = TLV_AUTHORIZATION_ACTOR;
         } else {
             context->state++;
         }
@@ -327,27 +327,9 @@ static void processTxExtensions(txProcessingContext_t *context) {
     context->processingField = false;
 }
 
-/**
- * Context free actions are not supported and a corresponding data as well.
- * Hash 32 bytes long '0' value buffer instead.
-*/
-static void processCtxFreeData(txProcessingContext_t *context) {
-    if (context->currentFieldLength != 0) {
-        PRINTF("processCtxFreeData Context free data is not supported\n");
-        THROW(EXCEPTION);
-    }
-
-    uint8_t empty[32] = {0};
-    hashTxData(context, empty, sizeof(empty));
-
-    // Move to next state
-    context->state++;
-    context->processingField = false;
-}
-
 static parserStatus_e processTxInternal(txProcessingContext_t *context) {
     for(;;) {
-        if (context->state == TLV_TX_DONE) {
+        if (context->state == TLV_DONE) {
             return STREAM_FINISHED;
         }
         if (context->commandLength == 0) {
@@ -388,22 +370,22 @@ static parserStatus_e processTxInternal(txProcessingContext_t *context) {
             context->processingField = true;
         }
         switch (context->state) {
-        case TLV_TX_CHAIN_ID:
-        case TLV_TX_HEADER_EXPITATION:
-        case TLV_TX_HEADER_REF_BLOCK_NUM:
-        case TLV_TX_HEADER_REF_BLOCK_PREFIX:
-        case TLV_TX_HEADER_MAX_CPU_USAGE_MS:
-        case TLV_TX_HEADER_MAX_NET_USAGE_WORDS:
-        case TLV_TX_HEADER_DELAY_SEC:
+        case TLV_CHAIN_ID:
+        case TLV_HEADER_EXPITATION:
+        case TLV_HEADER_REF_BLOCK_NUM:
+        case TLV_HEADER_REF_BLOCK_PREFIX:
+        case TLV_HEADER_MAX_CPU_USAGE_MS:
+        case TLV_HEADER_MAX_NET_USAGE_WORDS:
+        case TLV_HEADER_DELAY_SEC:
             processField(context);
             break;
 
-        case TLV_TX_CONTEXT_FREE_ACTION_NUMBER:
-            processCtxFreeActionNumber(context);
+        case TLV_CFA_LIST_SIZE:
+            processZeroSizeField(context);
             break;
 
-        case TLV_ACTION_NUMBER:
-            processActionNumber(context);
+        case TLV_ACTION_LIST_SIZE:
+            processActionListSizeField(context);
             break;
 
         case TLV_ACTION_ACCOUNT:
@@ -414,27 +396,31 @@ static parserStatus_e processTxInternal(txProcessingContext_t *context) {
             processActionName(context);
             break;
 
-        case TLV_AUTH_NUMBER:
-            processAuthorizastionNumber(context);
+        case TLV_AUTHORIZATION_LIST_SIZE:
+            processAuthorizationListSizeField(context);
             break;
 
-        case TLV_AUTH_ACTOR:
+        case TLV_AUTHORIZATION_ACTOR:
             processField(context);
             break;
-        case TLV_AUTH_PERMISSION:
+        case TLV_AUTHORIZATION_PERMISSION:
             processAuthorizationPermission(context);
+            break;
+        
+        case TLV_ACTION_DATA_SIZE:
+            processField(context);
             break;
         
         case TLV_ACTION_DATA:
             processActionData(context);
             break;
 
-        case TLV_TX_TRANSACTION_EXTENSION_NUMBER:
-            processField(context);
+        case TLV_TX_EXTENSION_LIST_SIZE:
+            processZeroSizeField(context);
             break;
 
-        case TLV_TX_CONTEXT_FREE_DATA:
-            processCtxFreeData(context);
+        case TLV_CONTEXT_FREE_DATA:
+            processField(context);
             break;
 
         default:

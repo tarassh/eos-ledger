@@ -203,24 +203,28 @@ if args.path is None:
 donglePath = parse_bip32_path(args.path)
 pathSize = len(donglePath) / 4
 
-signData = "04209999999999999999999999999999999999999999999999999999999999997788".decode('hex')
+signData = "0420999999999999999999999999999999999999999999999999999999999999999904045b30dc9a04023ca8040495ae4f7104010004010004010004010004010104085530ea000000000004089ab864229a9e400004010104085530ea000000000004083232eda80000000004016604660000000000ea305500fc7566d15cfd4501000000010002ed0a3156276d5116973957e1cecf39034b0175f8ec897c0b562349a3b9f8e56a0100000001000000010002ed0a3156276d5116973957e1cecf39034b0175f8ec897c0b562349a3b9f8e56a0100000004010004200000000000000000000000000000000000000000000000000000000000000000".decode('hex')
 singSize = len(signData)
-
-signChunk1 = signData[:singSize-3]
-signChunk2 = signData[singSize-3:]
-
-totalSize = len(donglePath) + 1 + len(signChunk1)
-apdu = "e0040000".decode('hex') + chr(totalSize) + chr(pathSize) + donglePath \
-       + signChunk1
+print "size ", singSize
 
 dongle = getDongle(True)
-result = dongle.exchange(bytes(apdu))
+offset = 0
+first = True
+while offset != singSize:
+    if singSize - offset > 64:
+        chunk = signData[offset: offset + 64]
+    else:
+        chunk = signData[offset:]
 
-totalSize = len(signChunk2)
-apdu = "e0048000".decode('hex') + chr(totalSize) + signChunk2
-result = dongle.exchange(bytes(apdu))
+    if first:
+        totalSize = len(donglePath) + 1 + len(chunk)
+        apdu = "e0040000".decode('hex') + chr(totalSize) + chr(pathSize) + donglePath + chunk
+        first = False
+    else:
+        totalSize = len(chunk)
+        apdu = "e0048000".decode('hex') + chr(totalSize) + chunk
 
-
-print result
-
+    offset += len(chunk)
+    result = dongle.exchange(bytes(apdu))
+    print result
 

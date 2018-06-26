@@ -3,10 +3,12 @@
 
 #include <stdint.h>
 
+#define NAME 0
+
 typedef uint32_t fc_unsigned_int_t;
 typedef uint64_t name_t;
 typedef uint64_t symbol_t;
-typedef uint8_t chain_id_t[32];
+typedef uint8_t checksum256[32];
 
 typedef struct transaction_header_t {
     uint32_t expiration;

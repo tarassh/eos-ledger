@@ -79,8 +79,7 @@ static void processZeroSizeField(txProcessingContext_t *context) {
         hashTxData(context, context->workBuffer, length);
 
         // Store data into a buffer
-        os_memmove(context->sizeBuffer + context->sizeBufferPos, context->workBuffer, length);
-        context->sizeBufferPos += length;
+        os_memmove(context->sizeBuffer + context->currentFieldPos, context->workBuffer, length);
 
         context->workBuffer += length;
         context->commandLength -= length;
@@ -88,12 +87,11 @@ static void processZeroSizeField(txProcessingContext_t *context) {
     }
 
     if (context->currentFieldPos == context->currentFieldLength) {
-        if (unpack_fc_unsigned_int(context->sizeBuffer, context->sizeBufferPos + 1) != 0) {
+        if (unpack_fc_unsigned_int(context->sizeBuffer, context->currentFieldPos + 1) != 0) {
             PRINTF("processCtxFreeAction Action Number must be 0\n");
             THROW(EXCEPTION);
         }
         // Reset size buffer
-        context->sizeBufferPos = 0;
         os_memset(context->sizeBuffer, 0, sizeof(context->sizeBuffer));
 
         // Move to next state
@@ -119,8 +117,7 @@ static void processActionListSizeField(txProcessingContext_t *context) {
         hashTxData(context, context->workBuffer, length);
 
         // Store data into a buffer
-        os_memmove(context->sizeBuffer + context->sizeBufferPos, context->workBuffer, length);
-        context->sizeBufferPos += length;
+        os_memmove(context->sizeBuffer + context->currentFieldPos, context->workBuffer, length);
 
         context->workBuffer += length;
         context->commandLength -= length;
@@ -128,14 +125,13 @@ static void processActionListSizeField(txProcessingContext_t *context) {
     }
 
     if (context->currentFieldPos == context->currentFieldLength) {
-        context->currentActionNumber = unpack_fc_unsigned_int(context->sizeBuffer, context->sizeBufferPos + 1);
+        context->currentActionNumber = unpack_fc_unsigned_int(context->sizeBuffer, context->currentFieldPos + 1);
         if (context->currentActionNumber != 1) {
             PRINTF("processActionListSizeField Action Number must be 1\n");
             THROW(EXCEPTION);
         }
         // Reset size buffer
         context->currentActionIndex = 0;
-        context->sizeBufferPos = 0;
         os_memset(context->sizeBuffer, 0, sizeof(context->sizeBuffer));
 
         context->state++;
@@ -218,8 +214,7 @@ static void processAuthorizationListSizeField(txProcessingContext_t *context) {
         hashTxData(context, context->workBuffer, length);
 
         // Store data into a buffer
-        os_memmove(context->sizeBuffer + context->sizeBufferPos, context->workBuffer, length);
-        context->sizeBufferPos += length;
+        os_memmove(context->sizeBuffer + context->currentFieldPos, context->workBuffer, length);
 
         context->workBuffer += length;
         context->commandLength -= length;
@@ -227,10 +222,9 @@ static void processAuthorizationListSizeField(txProcessingContext_t *context) {
     }
 
     if (context->currentFieldPos == context->currentFieldLength) {
-        context->currentAutorizationNumber = unpack_fc_unsigned_int(context->sizeBuffer, context->sizeBufferPos + 1);
+        context->currentAutorizationNumber = unpack_fc_unsigned_int(context->sizeBuffer, context->currentFieldPos + 1);
         context->currentAutorizationIndex = 0;
         // Reset size buffer
-        context->sizeBufferPos = 0;
         os_memset(context->sizeBuffer, 0, sizeof(context->sizeBuffer));
 
         // Move to next state
@@ -261,7 +255,6 @@ static void processAuthorizationPermission(txProcessingContext_t *context) {
     if (context->currentFieldPos == context->currentFieldLength) {
         context->currentAutorizationIndex++;
         // Reset size buffer
-        context->sizeBufferPos = 0;
         os_memset(context->sizeBuffer, 0, sizeof(context->sizeBuffer));
 
         // Start over reading Authorization data or move to the next state
@@ -272,6 +265,39 @@ static void processAuthorizationPermission(txProcessingContext_t *context) {
             context->state++;
         }
         context->processingField = false;
+    }
+}
+
+/**
+ * Process data types that should be used in order to parse data.
+ * This data isn't used for hashing.
+*/
+static void processActionDataTypes(txProcessingContext_t *context) {
+    if (context->currentFieldLength > sizeof(context->dataTypeBuffer)) {
+        PRINTF("processActionDataTypes data overflow\n");
+        THROW(EXCEPTION);
+    }
+
+    if (context->currentFieldPos < context->currentFieldLength) {
+        uint32_t length = 
+            (context->commandLength <
+                     ((context->currentFieldLength - context->currentFieldPos))
+                ? context->commandLength
+                : context->currentFieldLength - context->currentFieldPos);
+        
+        os_memmove(context->dataTypeBuffer + context->currentFieldPos, context->workBuffer, length);
+
+        context->workBuffer += length;
+        context->commandLength -= length;
+        context->currentFieldPos += length;
+    }
+
+    if (context->currentFieldPos == context->currentFieldLength) {
+        context->currentActionDataTypeNumber = context->currentFieldLength;
+        context->currentActionDataTypeIndex = 0;
+
+        context->state++;
+        context->processingField = false;        
     }
 }
 
@@ -301,10 +327,14 @@ static void processActionData(txProcessingContext_t *context) {
 
     if (context->currentFieldPos == context->currentFieldLength) {
         // We processed last action field
-        context->currentActionIndex = 0;
-        context->currentActionNumber = 0;
+        context->currentActionIndex++;
+        if (context->currentActionIndex == context->currentActionNumber) {
+            context->currentActionNumber = 0;
+            context->currentActionIndex = 0;
 
-        context->state++;
+            context->state++;
+        }
+        
         context->processingField = false;
     }
 }
@@ -405,9 +435,13 @@ static parserStatus_e processTxInternal(txProcessingContext_t *context) {
         case TLV_AUTHORIZATION_ACTOR:
             processField(context);
             break;
+
         case TLV_AUTHORIZATION_PERMISSION:
             processAuthorizationPermission(context);
             break;
+
+        // case TLV_ACTION_DATA_TYPES:
+        //     break;
         
         case TLV_ACTION_DATA_SIZE:
             processField(context);

@@ -25,6 +25,79 @@ uint8_t readTxByte(txProcessingContext_t *context) {
     context->commandLength--;
     return data;
 }
+
+static void parseActionData(txProcessingContext_t *context) {
+    uint32_t i = 0;
+    uint32_t contentLength = 0;
+    uint32_t contentDataLength = sizeof(context->content->actionData);
+    char *contentData = context->content->actionData;
+    uint8_t *fromBuffer = context->actionDataBuffer;
+    uint32_t fromBufferLength = context->currentActionDataBufferLength;
+
+    os_memset(contentData, 0, contentDataLength);
+
+    for (i = 0; i < context->currentActionDataTypeNumber; ++i) {
+        switch (context->actionDataTypeBuffer[i]) {
+        case NAME_TYPE:
+            {
+                if (fromBufferLength < 8) {
+                    PRINTF("parseActionData Insufficient buffer\n");
+                    THROW(EXCEPTION);
+                }
+
+                // Parse data from buffer
+                name_t name = buffer_to_name_type(fromBuffer, 8);
+                fromBuffer += 8;
+                fromBufferLength -= 8;
+
+                // Write parsed data to dispaly buffer
+                contentLength = name_to_string(name, contentData, contentDataLength);
+            }
+            break;
+        case STRING_TYPE:
+            {
+                uint32_t stringLength = 0;
+                uint32_t read = unpack_fc_unsigned_int(fromBuffer, fromBufferLength, &stringLength);
+                fromBuffer += read;
+                fromBufferLength -= read;
+
+                // TODO: Do Checking.
+                os_memmove(contentData, fromBuffer, stringLength);
+            }
+            break;
+        case ASSET_TYPE: 
+            {
+                asset_t asset;
+                if (fromBufferLength < sizeof(asset)) {
+                    PRINTF("parseActionData Insufficient buffer\n");
+                    THROW(EXCEPTION);
+                }
+
+                os_memmove(&asset, fromBuffer, sizeof(asset));
+                fromBuffer += sizeof(asset);
+                fromBufferLength -= sizeof(asset);
+
+                // write data to buffer
+                contentLength = asset_to_string(&asset, contentData, contentDataLength);
+            }
+            break;
+        default:
+            PRINTF("parseActionData Unimplemented type\n");
+            THROW(EXCEPTION);
+        }
+
+        if (contentLength > 0 && fromBufferLength > 0) {
+            contentData += contentLength;
+            contentDataLength -= contentLength;
+
+            *contentData = ' ';
+            contentData++;
+            contentDataLength--;
+        } 
+
+    }
+}
+
 /**
  * Sequentially hash an incoming data.
  * Hash functionality is moved out here in order to reduce 
@@ -87,7 +160,9 @@ static void processZeroSizeField(txProcessingContext_t *context) {
     }
 
     if (context->currentFieldPos == context->currentFieldLength) {
-        if (unpack_fc_unsigned_int(context->sizeBuffer, context->currentFieldPos + 1) != 0) {
+        uint32_t sizeValue = 0;
+        unpack_fc_unsigned_int(context->sizeBuffer, context->currentFieldPos + 1, &sizeValue);
+        if (sizeValue != 0) {
             PRINTF("processCtxFreeAction Action Number must be 0\n");
             THROW(EXCEPTION);
         }
@@ -125,7 +200,7 @@ static void processActionListSizeField(txProcessingContext_t *context) {
     }
 
     if (context->currentFieldPos == context->currentFieldLength) {
-        context->currentActionNumber = unpack_fc_unsigned_int(context->sizeBuffer, context->currentFieldPos + 1);
+        unpack_fc_unsigned_int(context->sizeBuffer, context->currentFieldPos + 1, &context->currentActionNumber);
         if (context->currentActionNumber != 1) {
             PRINTF("processActionListSizeField Action Number must be 1\n");
             THROW(EXCEPTION);
@@ -163,6 +238,7 @@ static void processActionAccount(txProcessingContext_t *context) {
         context->state++;
         context->processingField = false;
 
+        // TODO: MAYBE THAT WITH REAL TX IT WILL not reverse
         name_t account = buffer_to_name_type(context->nameTypeBuffer, sizeof(context->nameTypeBuffer));
         os_memset(context->content->accountName, 0, sizeof(context->content->accountName));
         name_to_string(account, context->content->accountName, sizeof(context->content->accountName));
@@ -193,6 +269,7 @@ static void processActionName(txProcessingContext_t *context) {
         context->state++;
         context->processingField = false;
 
+        // TODO: Maybe with real tx it will be not reverse
         name_t name = buffer_to_name_type(context->nameTypeBuffer, sizeof(context->nameTypeBuffer));
         os_memset(context->content->actionName, 0, sizeof(context->content->actionName));
         name_to_string(name, context->content->actionName, sizeof(context->content->actionName));
@@ -222,7 +299,7 @@ static void processAuthorizationListSizeField(txProcessingContext_t *context) {
     }
 
     if (context->currentFieldPos == context->currentFieldLength) {
-        context->currentAutorizationNumber = unpack_fc_unsigned_int(context->sizeBuffer, context->currentFieldPos + 1);
+        unpack_fc_unsigned_int(context->sizeBuffer, context->currentFieldPos + 1, &context->currentAutorizationNumber);
         context->currentAutorizationIndex = 0;
         // Reset size buffer
         os_memset(context->sizeBuffer, 0, sizeof(context->sizeBuffer));
@@ -273,7 +350,7 @@ static void processAuthorizationPermission(txProcessingContext_t *context) {
  * This data isn't used for hashing.
 */
 static void processActionDataTypes(txProcessingContext_t *context) {
-    if (context->currentFieldLength > sizeof(context->dataTypeBuffer)) {
+    if (context->currentFieldLength > sizeof(context->actionDataTypeBuffer)) {
         PRINTF("processActionDataTypes data overflow\n");
         THROW(EXCEPTION);
     }
@@ -285,7 +362,7 @@ static void processActionDataTypes(txProcessingContext_t *context) {
                 ? context->commandLength
                 : context->currentFieldLength - context->currentFieldPos);
         
-        os_memmove(context->dataTypeBuffer + context->currentFieldPos, context->workBuffer, length);
+        os_memmove(context->actionDataTypeBuffer + context->currentFieldPos, context->workBuffer, length);
 
         context->workBuffer += length;
         context->commandLength -= length;
@@ -294,7 +371,6 @@ static void processActionDataTypes(txProcessingContext_t *context) {
 
     if (context->currentFieldPos == context->currentFieldLength) {
         context->currentActionDataTypeNumber = context->currentFieldLength;
-        context->currentActionDataTypeIndex = 0;
 
         context->state++;
         context->processingField = false;        
@@ -305,7 +381,7 @@ static void processActionDataTypes(txProcessingContext_t *context) {
  * Process current action data field and store in into data buffer.
 */
 static void processActionData(txProcessingContext_t *context) {
-    if (context->currentFieldLength > 512) {
+    if (context->currentFieldLength > sizeof(context->actionDataBuffer) - 1) {
         PRINTF("processActionData data overflow\n");
         THROW(EXCEPTION);
     }
@@ -318,7 +394,7 @@ static void processActionData(txProcessingContext_t *context) {
                 : context->currentFieldLength - context->currentFieldPos);
 
         hashTxData(context, context->workBuffer, length);
-        os_memmove(context->content->actionData + context->currentFieldPos, context->workBuffer, length);
+        os_memmove(context->actionDataBuffer + context->currentFieldPos, context->workBuffer, length);
 
         context->workBuffer += length;
         context->commandLength -= length;
@@ -326,14 +402,20 @@ static void processActionData(txProcessingContext_t *context) {
     }
 
     if (context->currentFieldPos == context->currentFieldLength) {
-        // We processed last action field
         context->currentActionIndex++;
         if (context->currentActionIndex == context->currentActionNumber) {
+            // We processed last action field
             context->currentActionNumber = 0;
             context->currentActionIndex = 0;
 
             context->state++;
+        } else {
+            // still iterating
+            context->state = TLV_ACTION_DATA;
         }
+
+        context->currentActionDataBufferLength = context->currentFieldLength;
+        parseActionData(context);
         
         context->processingField = false;
     }
@@ -440,8 +522,9 @@ static parserStatus_e processTxInternal(txProcessingContext_t *context) {
             processAuthorizationPermission(context);
             break;
 
-        // case TLV_ACTION_DATA_TYPES:
-        //     break;
+        case TLV_ACTION_DATA_TYPES:
+            processActionDataTypes(context);
+            break;
         
         case TLV_ACTION_DATA_SIZE:
             processField(context);

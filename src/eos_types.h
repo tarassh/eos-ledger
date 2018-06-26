@@ -3,7 +3,10 @@
 
 #include <stdint.h>
 
-#define NAME 0
+#define NAME_TYPE   0
+#define ASSET_TYPE  1
+#define STRING_TYPE 2
+
 
 typedef uint32_t fc_unsigned_int_t;
 typedef uint64_t name_t;
@@ -37,9 +40,11 @@ typedef struct asset_t {
 } asset_t;
 
 uint8_t pack_fc_unsigned_int(fc_unsigned_int_t value, uint8_t *out);
-fc_unsigned_int_t unpack_fc_unsigned_int(uint8_t *in, uint32_t length);
+uint32_t unpack_fc_unsigned_int(uint8_t *in, uint32_t length, fc_unsigned_int_t *value);
 
 name_t buffer_to_name_type(uint8_t *in, uint32_t size);
 uint8_t name_to_string(name_t value, char *out, uint32_t size);
+
+uint8_t asset_to_string(asset_t *asset, char *out, uint32_t size);
 
 #endif // __EOS_TYPES_H__

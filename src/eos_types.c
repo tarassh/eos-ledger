@@ -6,15 +6,12 @@
 static const char* charmap = ".12345abcdefghijklmnopqrstuvwxyz";
 
 name_t buffer_to_name_type(uint8_t *in, uint32_t size) {
-    if (size != 8) {
-        THROW(EXCEPTION);
+    if (size < 8) {
+        THROW(EXCEPTION_OVERFLOW);
     }
 
     name_t value;
-    uint8_t *p = &value;
-    for (int i = 0; i < 8; ++i) {
-        os_memmove(p + (7-i), in + i, 1);
-    }
+    os_memmove(&value, in, 8);
 
     return value;
 }
@@ -142,13 +139,15 @@ uint8_t pack_fc_unsigned_int(fc_unsigned_int_t value, uint8_t *out) {
     return i;
 }
 
-fc_unsigned_int_t unpack_fc_unsigned_int(uint8_t *in, uint32_t length) {
+uint32_t unpack_fc_unsigned_int(uint8_t *in, uint32_t length, fc_unsigned_int_t *value) {
+    uint32_t i = 0;
     uint64_t v = 0; char b = 0; uint8_t by = 0;
     do {
-        b = *in; ++in;
+        b = *in; ++in; ++i;
         v |= (uint32_t)((uint8_t)b & 0x7f) << by;
         by += 7;
     } while( ((uint8_t)b) & 0x80 && by < 32 );
     
-    return v;
+    *value = v;
+    return i;
 }

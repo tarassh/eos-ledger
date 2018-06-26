@@ -372,6 +372,8 @@ static void processActionDataTypes(txProcessingContext_t *context) {
     if (context->currentFieldPos == context->currentFieldLength) {
         context->currentActionDataTypeNumber = context->currentFieldLength;
 
+        parseActionData(context);
+
         context->state++;
         context->processingField = false;        
     }
@@ -407,15 +409,13 @@ static void processActionData(txProcessingContext_t *context) {
             // We processed last action field
             context->currentActionNumber = 0;
             context->currentActionIndex = 0;
+            context->currentActionDataBufferLength = context->currentFieldLength;
 
             context->state++;
         } else {
             // still iterating
             context->state = TLV_ACTION_DATA;
         }
-
-        context->currentActionDataBufferLength = context->currentFieldLength;
-        parseActionData(context);
         
         context->processingField = false;
     }
@@ -521,10 +521,6 @@ static parserStatus_e processTxInternal(txProcessingContext_t *context) {
         case TLV_AUTHORIZATION_PERMISSION:
             processAuthorizationPermission(context);
             break;
-
-        case TLV_ACTION_DATA_TYPES:
-            processActionDataTypes(context);
-            break;
         
         case TLV_ACTION_DATA_SIZE:
             processField(context);
@@ -532,6 +528,10 @@ static parserStatus_e processTxInternal(txProcessingContext_t *context) {
         
         case TLV_ACTION_DATA:
             processActionData(context);
+            break;
+
+        case TLV_ACTION_DATA_TYPES:
+            processActionDataTypes(context);
             break;
 
         case TLV_TX_EXTENSION_LIST_SIZE:
@@ -599,6 +599,7 @@ static parserStatus_e processTxInternal(txProcessingContext_t *context) {
 */
 parserStatus_e parseTx(txProcessingContext_t *context, uint8_t *buffer, uint32_t length) {
     parserStatus_e result;
+    int ex = 0;
     BEGIN_TRY {
         TRY {
             context->workBuffer = buffer;
@@ -607,10 +608,14 @@ parserStatus_e parseTx(txProcessingContext_t *context, uint8_t *buffer, uint32_t
         }
         CATCH_OTHER(e) {
             result = STREAM_FAULT;
+            ex = e;
         }
         FINALLY {
         }
     }
     END_TRY;
+    if (ex != 0) {
+        THROW(ex);
+    }
     return result;
 }

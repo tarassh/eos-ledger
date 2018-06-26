@@ -103,24 +103,32 @@ uint8_t asset_to_string(asset_t *asset, char *out, uint32_t size) {
     while (p > 0) {
         p10 *= 10; --p;
     }
+
     p = (int64_t)symbol_precision(asset->symbol);
 
     char fraction[p+1];
-    fraction[p] = '\0';
+    fraction[p] = 0;
     int64_t change = asset->amount % p10;
 
     for (int64_t i = p - 1; i >= 0; --i) {
         fraction[i] = (change % 10) + '0';
         change /= 10;
     }
-
-    char symbol[9] = { 0 };
+    char symbol[9];
+    os_memset(symbol, 0, sizeof(symbol));
     symbol_to_string(asset->symbol, symbol, 8);
 
-    char tmp[64] = { 0 };
-    snprintf(tmp, 64, "%lld.%s %s", asset->amount / p10, fraction, symbol);
-
+    char tmp[64];
+    os_memset(tmp, 0, sizeof(tmp));
+    //, fraction, symbol
+    snprintf(tmp, 64, "%lld.", asset->amount / p10);
     uint8_t actual_size = strlen(tmp);
+    os_memmove(tmp + actual_size, fraction, strlen(fraction));
+    actual_size = strlen(tmp);
+    *(tmp + actual_size++) = ' ';
+    os_memmove(tmp + actual_size, symbol, strlen(symbol));
+    actual_size = strlen(tmp);
+    
     os_memmove(out, tmp, actual_size);
 
     return actual_size;

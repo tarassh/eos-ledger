@@ -421,26 +421,6 @@ static void processActionData(txProcessingContext_t *context) {
     }
 }
 
-/**
- * Transaction extensions are not supported. Decision has been made based on
- * observations. Nevertheless, the '0' size value should be hashed as it is
- * a part of signing infornation.
-*/
-static void processTxExtensions(txProcessingContext_t *context) {
-    if (context->currentFieldLength != 0) {
-        PRINTF("processTxExtensions Transaction extensions are not supported\n");
-        THROW(EXCEPTION);
-    }
-
-    uint8_t tmp[16] = {0};
-    uint8_t packedBytes = pack_fc_unsigned_int(0, tmp);
-    hashTxData(context, tmp, packedBytes);
-
-    // Move to next state
-    context->state++;
-    context->processingField = false;
-}
-
 static parserStatus_e processTxInternal(txProcessingContext_t *context) {
     for(;;) {
         if (context->state == TLV_DONE) {
@@ -599,7 +579,12 @@ static parserStatus_e processTxInternal(txProcessingContext_t *context) {
 */
 parserStatus_e parseTx(txProcessingContext_t *context, uint8_t *buffer, uint32_t length) {
     parserStatus_e result;
-    int ex = 0;
+#ifdef DEBUG
+    // Do not catch exceptions.
+    context->workBuffer = buffer;
+    context->commandLength = length;
+    result = processTxInternal(context);
+#else
     BEGIN_TRY {
         TRY {
             context->workBuffer = buffer;
@@ -608,14 +593,11 @@ parserStatus_e parseTx(txProcessingContext_t *context, uint8_t *buffer, uint32_t
         }
         CATCH_OTHER(e) {
             result = STREAM_FAULT;
-            ex = e;
         }
         FINALLY {
         }
     }
     END_TRY;
-    if (ex != 0) {
-        THROW(ex);
-    }
+#endif
     return result;
 }

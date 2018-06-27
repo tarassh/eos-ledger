@@ -1,4 +1,5 @@
 #include "eos_types.h"
+#include "eos_utils.h"
 #include "os.h"
 #include <stdbool.h>
 #include "string.h"
@@ -120,18 +121,18 @@ uint8_t asset_to_string(asset_t *asset, char *out, uint32_t size) {
 
     char tmp[64];
     os_memset(tmp, 0, sizeof(tmp));
-    //, fraction, symbol
-    snprintf(tmp, 64, "%lld.", asset->amount / p10);
-    uint8_t actual_size = strlen(tmp);
-    os_memmove(tmp + actual_size, fraction, strlen(fraction));
-    actual_size = strlen(tmp);
-    *(tmp + actual_size++) = ' ';
-    os_memmove(tmp + actual_size, symbol, strlen(symbol));
-    actual_size = strlen(tmp);
+    i64toa(asset->amount / p10, tmp);
+    uint32_t assetTextLength = strlen(tmp);
+    tmp[assetTextLength++] = '.';
+    os_memmove(tmp + assetTextLength, fraction, strlen(fraction));
+    assetTextLength = strlen(tmp);
+    tmp[assetTextLength++] = ' ';
+    os_memmove(tmp + assetTextLength, symbol, strlen(symbol));
+    assetTextLength = strlen(tmp);
     
-    os_memmove(out, tmp, actual_size);
+    os_memmove(out, tmp, assetTextLength);
 
-    return actual_size;
+    return assetTextLength;
 }
 
 uint8_t pack_fc_unsigned_int(fc_unsigned_int_t value, uint8_t *out) {

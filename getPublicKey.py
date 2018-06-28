@@ -55,7 +55,8 @@ offset = 1 + result[0]
 address = result[offset + 1: offset + 1 + result[offset]]
 
 public_key = result[1: 1 + result[0]]
-public_key_compressed = bytearray([0x02]) + public_key[1:33]
+head = 0x02 if (public_key[33] & 0x01) == 1 else 0x03
+public_key_compressed = bytearray([head]) + public_key[1:33]
 
 print "           Public key " + str(public_key).encode('hex')
 print "Public key compressed " + str(public_key_compressed).encode('hex')

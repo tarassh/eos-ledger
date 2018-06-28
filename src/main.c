@@ -671,8 +671,8 @@ uint32_t set_result_get_publicKey() {
 uint8_t public_key_to_wif(cx_ecfp_public_key_t *publicKey, uint8_t *out, uint8_t size) {
     uint8_t temp[37];
     uint8_t addressLen = 0;
-    // is odd?
-    temp[0] = (publicKey->W[33]& 0x1) ? 0x02 : 0x03;
+    // is even?
+    temp[0] = (publicKey->W[33] & 0x1) ? 0x02 : 0x03;
     os_memmove(temp + 1, publicKey->W + 1, 32);
 
     uint8_t check[20];

@@ -97,9 +97,6 @@ txProcessingContent_t txContent;
 // volatile uint8_t dataAllowed;
 // volatile uint8_t fidoTransport;
 volatile char fullAddress[60];
-volatile char fullAction[512];
-volatile char fullAmount[50];
-volatile char maxFee[50];
 volatile bool dataPresent;
 volatile bool skipWarning;
 
@@ -852,7 +849,6 @@ void handleApdu(volatile unsigned int *flags, volatile unsigned int *tx) {
                     G_io_apdu_buffer + OFFSET_CDATA,
                     G_io_apdu_buffer[OFFSET_LC], flags, tx);
                 break;
-
 
             default:
                 THROW(0x6D00);

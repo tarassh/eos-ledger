@@ -80,6 +80,16 @@ static void parseActionData(txProcessingContext_t *context) {
                 fieldLength = asset_to_string(&asset, displayBuffer, displayBufferLength);
             }
             break;
+        case PUBLIC_KEY_TYPE:
+            {
+                if (bufferLength < 33) {
+                    PRINTF("parseActionData Insufficient buffer\n");
+                    THROW(EXCEPTION);
+                }
+
+                fieldLength = public_key_to_wif(buffer, bufferLength, displayBuffer, displayBufferLength);
+            }
+            break;
         default:
             PRINTF("parseActionData Unimplemented type\n");
             THROW(EXCEPTION);

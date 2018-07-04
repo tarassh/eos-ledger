@@ -6,6 +6,15 @@
 #include <stdbool.h>
 #include "eos_types.h"
 
+/**
+ * Data processing rules
+ * [type][offset]
+*/
+#define NAME_TYPE       0
+#define ASSET_TYPE      1
+#define STRING_TYPE     2
+#define PUBLIC_KEY_TYPE 3
+
 typedef struct txProcessingContent_t {
     char accountName[14];
     char actionName[14];
@@ -54,7 +63,7 @@ typedef struct txProcessingContext_t {
     uint32_t commandLength;
     uint8_t nameTypeBuffer[8];
     uint8_t sizeBuffer[12];
-    uint8_t actionDataTypeBuffer[16];
+    uint8_t actionDataTypeBuffer[64];
     uint8_t actionDataBuffer[512];
     txProcessingContent_t *content;
 } txProcessingContext_t;

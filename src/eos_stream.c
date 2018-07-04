@@ -28,71 +28,69 @@ uint8_t readTxByte(txProcessingContext_t *context) {
 
 static void parseActionData(txProcessingContext_t *context) {
     uint32_t i = 0;
-    uint32_t contentLength = 0;
-    uint32_t contentDataLength = sizeof(context->content->actionData);
-    char *contentData = context->content->actionData;
-    uint8_t *fromBuffer = context->actionDataBuffer;
-    uint32_t fromBufferLength = context->currentActionDataBufferLength;
+    uint32_t fieldLength = 0;
+    uint32_t displayBufferLength = sizeof(context->content->actionData);
+    char *displayBuffer = context->content->actionData;
 
-    os_memset(contentData, 0, contentDataLength);
+    os_memset(displayBuffer, 0, displayBufferLength);
 
-    for (i = 0; i < context->currentActionDataTypeNumber; ++i) {
-        switch (context->actionDataTypeBuffer[i]) {
+    while (i < context->currentActionDataTypeNumber) {
+        uint8_t type = context->actionDataTypeBuffer[i++];
+        uint8_t offset = context->actionDataTypeBuffer[i++];
+        uint32_t bufferLength = context->currentActionDataBufferLength - offset;
+        uint8_t *buffer = context->actionDataBuffer + offset;
+
+        switch (type) {
         case NAME_TYPE:
             {
-                if (fromBufferLength < 8) {
+                if (bufferLength < 8) {
                     PRINTF("parseActionData Insufficient buffer\n");
                     THROW(EXCEPTION);
                 }
 
                 // Parse data from buffer
-                name_t name = buffer_to_name_type(fromBuffer, 8);
-                fromBuffer += 8;
-                fromBufferLength -= 8;
+                name_t name = buffer_to_name_type(buffer, 8);
 
                 // Write parsed data to dispaly buffer
-                contentLength = name_to_string(name, contentData, contentDataLength);
+                fieldLength = name_to_string(name, displayBuffer, displayBufferLength);
             }
             break;
         case STRING_TYPE:
             {
-                uint32_t stringLength = 0;
-                uint32_t read = unpack_fc_unsigned_int(fromBuffer, fromBufferLength, &stringLength);
-                fromBuffer += read;
-                fromBufferLength -= read;
+                uint32_t read = unpack_fc_unsigned_int(buffer, bufferLength, &fieldLength);
+                if (bufferLength < fieldLength) {
+                    PRINTF("parseActionData Insufficient buffer\n");
+                    THROW(EXCEPTION);
+                }
 
-                // TODO: Do Checking.
-                os_memmove(contentData, fromBuffer, stringLength);
+                os_memmove(displayBuffer, buffer + read, fieldLength);
             }
             break;
         case ASSET_TYPE: 
             {
                 asset_t asset;
-                if (fromBufferLength < sizeof(asset)) {
+                if (bufferLength < sizeof(asset)) {
                     PRINTF("parseActionData Insufficient buffer\n");
                     THROW(EXCEPTION);
                 }
 
-                os_memmove(&asset, fromBuffer, sizeof(asset));
-                fromBuffer += sizeof(asset);
-                fromBufferLength -= sizeof(asset);
+                os_memmove(&asset, buffer, sizeof(asset));
 
                 // write data to buffer
-                contentLength = asset_to_string(&asset, contentData, contentDataLength);
+                fieldLength = asset_to_string(&asset, displayBuffer, displayBufferLength);
             }
             break;
         default:
             PRINTF("parseActionData Unimplemented type\n");
             THROW(EXCEPTION);
         }
+        displayBuffer += fieldLength;
+        displayBufferLength -= fieldLength;
 
-        if (contentLength > 0 && fromBufferLength > 0) {
-            contentData += contentLength;
-            contentDataLength -= contentLength;
-
-            *contentData = ' ';
-            contentData++;
-            contentDataLength--;
+        if (i < context->currentActionDataTypeNumber) {
+            *displayBuffer = ' ';
+            displayBuffer++;
+            displayBufferLength--;
         } 
 
     }
@@ -579,7 +577,7 @@ static parserStatus_e processTxInternal(txProcessingContext_t *context) {
 */
 parserStatus_e parseTx(txProcessingContext_t *context, uint8_t *buffer, uint32_t length) {
     parserStatus_e result;
-#ifdef DEBUG
+#ifdef DEBUG_APP
     // Do not catch exceptions.
     context->workBuffer = buffer;
     context->commandLength = length;

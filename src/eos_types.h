@@ -3,11 +3,6 @@
 
 #include <stdint.h>
 
-#define NAME_TYPE   0
-#define ASSET_TYPE  1
-#define STRING_TYPE 2
-
-
 typedef uint32_t fc_unsigned_int_t;
 typedef uint64_t name_t;
 typedef uint64_t symbol_t;

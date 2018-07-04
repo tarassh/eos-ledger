@@ -160,3 +160,34 @@ uint32_t unpack_fc_unsigned_int(uint8_t *in, uint32_t length, fc_unsigned_int_t 
     *value = v;
     return i;
 }
+
+uint32_t public_key_to_wif(uint8_t *publicKey, uint32_t keyLength, uint8_t *out, uint32_t outLength) {
+    if (publicKey == NULL || keyLength < 33) {
+        THROW(INVALID_PARAMETER);
+    }
+    if (outLength < 40) {
+        THROW(EXCEPTION_OVERFLOW);
+    }
+
+    uint8_t temp[37];
+    uint32_t addressLen = 0;
+    // is even?
+    temp[0] = (publicKey[33] & 0x1) ? 0x02 : 0x03;
+    os_memmove(temp + 1, publicKey + 1, 32);
+
+    uint8_t check[20];
+    cx_ripemd160_t riprip;
+    cx_ripemd160_init(&riprip);
+    cx_hash(&riprip.header, CX_LAST, temp, 33, check, 20);
+    os_memmove(temp + 33, check, 4);
+
+    os_memset(out, 0, outLength);
+    out[0] = 'E';
+    out[1] = 'O';
+    out[2] = 'S';
+    addressLen = buffer_to_encoded_base58(temp, sizeof(temp), out + 3, outLength - 3);
+    if (addressLen + 3 >= outLength) {
+        THROW(EXCEPTION_OVERFLOW);
+    }
+    return addressLen;    
+}

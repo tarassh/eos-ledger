@@ -49,7 +49,6 @@ unsigned int io_seproxyhal_touch_address_cancel(const bagl_element_t *e);
 void ui_idle(void);
 
 uint32_t set_result_get_publicKey(void);
-uint8_t public_key_to_wif(cx_ecfp_public_key_t *publicKey, uint8_t *out, uint8_t size);
 
 #define MAX_BIP32_PATH 10
 
@@ -668,30 +667,6 @@ uint32_t set_result_get_publicKey() {
     return tx;
 }
 
-uint8_t public_key_to_wif(cx_ecfp_public_key_t *publicKey, uint8_t *out, uint8_t size) {
-    uint8_t temp[37];
-    uint8_t addressLen = 0;
-    // is even?
-    temp[0] = (publicKey->W[33] & 0x1) ? 0x02 : 0x03;
-    os_memmove(temp + 1, publicKey->W + 1, 32);
-
-    uint8_t check[20];
-    cx_ripemd160_t riprip;
-    cx_ripemd160_init(&riprip);
-    cx_hash(&riprip.header, CX_LAST, temp, 33, check, 20);
-    os_memmove(temp + 33, check, 4);
-
-    os_memset(out, 0, size);
-    out[0] = 'E';
-    out[1] = 'O';
-    out[2] = 'S';
-    addressLen = buffer_to_encoded_base58(temp, sizeof(temp), out + 3, size - 3);
-    if (addressLen + 3 >= size) {
-        THROW(EXCEPTION_OVERFLOW);
-    }
-    return addressLen;
-}
-
 void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t *dataBuffer,
                         uint16_t dataLength, volatile unsigned int *flags,
                         volatile unsigned int *tx) {
@@ -728,7 +703,8 @@ void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t *dataBuffer,
                           &privateKey, 1);
     os_memset(&privateKey, 0, sizeof(privateKey));
     os_memset(privateKeyData, 0, sizeof(privateKeyData));
-    public_key_to_wif(&tmpCtx.publicKeyContext.publicKey, tmpCtx.publicKeyContext.address, sizeof(tmpCtx.publicKeyContext.address));
+    public_key_to_wif(tmpCtx.publicKeyContext.publicKey.W, sizeof(tmpCtx.publicKeyContext.publicKey.W),
+        tmpCtx.publicKeyContext.address, sizeof(tmpCtx.publicKeyContext.address));
     if (p1 == P1_NON_CONFIRM) {
         *tx = set_result_get_publicKey();
         THROW(0x9000);

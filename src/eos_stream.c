@@ -43,11 +43,85 @@ uint8_t readTxByte(txProcessingContext_t *context) {
     return data;
 }
 
+static void parseEosioTokenTransfer(txProcessingContext_t *context) {
+    uint32_t fieldLength = 0;
+    uint32_t displayBufferLength = sizeof(context->content->data);
+    char *displayBuffer = context->content->data;
+
+    uint32_t bufferLength = context->currentActionDataBufferLength;
+    uint8_t *buffer = context->actionDataBuffer;
+
+    os_memset(displayBuffer, 0, displayBufferLength);
+
+    // parse From account and To account foelds
+    if (bufferLength < sizeof(name_t) * 2) {
+        PRINTF("parseActionData Insufficient buffer\n");
+        THROW(EXCEPTION);
+    }
+
+    // Parse data from buffer
+    // Write parsed data to dispaly buffer
+    name_t name = buffer_to_name_type(buffer, 8);
+    fieldLength = name_to_string(name, displayBuffer, displayBufferLength);
+
+    buffer += sizeof(name_t);
+    bufferLength -= sizeof(name_t);
+
+    displayBuffer += fieldLength;
+    displayBufferLength -= fieldLength;
+    *displayBuffer = ' ';
+    displayBuffer++;
+    displayBufferLength--;
+
+    name = buffer_to_name_type(buffer, sizeof(name_t));
+    fieldLength = name_to_string(name, displayBuffer, displayBufferLength);
+
+    buffer += sizeof(name_t);
+    bufferLength -= sizeof(name_t);
+
+    displayBuffer += fieldLength;
+    displayBufferLength -= fieldLength;
+    *displayBuffer = ' ';
+    displayBuffer++;
+    displayBufferLength--;
+
+    // parse Asset field
+    if (bufferLength < sizeof(asset_t)) {
+        PRINTF("parseActionData Insufficient buffer\n");
+        THROW(EXCEPTION);
+    }
+
+    asset_t asset;
+    os_memmove(&asset, buffer, sizeof(asset));
+    fieldLength = asset_to_string(&asset, displayBuffer, displayBufferLength); 
+
+    buffer += sizeof(asset_t);
+    bufferLength -= sizeof(asset_t);
+
+    displayBuffer += fieldLength;
+    displayBufferLength -= fieldLength;
+    *displayBuffer = ' ';
+    displayBuffer++;
+    displayBufferLength--;
+
+    // parse Memo field
+    uint32_t read = unpack_fc_unsigned_int(buffer, bufferLength, &fieldLength);
+    if (bufferLength < fieldLength) {
+        PRINTF("parseActionData Insufficient buffer\n");
+        THROW(EXCEPTION);
+    }
+
+    os_memmove(displayBuffer, buffer + read, fieldLength);
+}
+
+/**
+ * Parse token transfer action data
+*/
 static void parseActionData(txProcessingContext_t *context) {
     uint32_t i = 0;
     uint32_t fieldLength = 0;
-    uint32_t displayBufferLength = sizeof(context->content->actionData);
-    char *displayBuffer = context->content->actionData;
+    uint32_t displayBufferLength = sizeof(context->content->data);
+    char *displayBuffer = context->content->data;
 
     os_memset(displayBuffer, 0, displayBufferLength);
 
@@ -225,13 +299,13 @@ static void processActionListSizeField(txProcessingContext_t *context) {
     }
 
     if (context->currentFieldPos == context->currentFieldLength) {
-        unpack_fc_unsigned_int(context->sizeBuffer, context->currentFieldPos + 1, &context->currentActionNumber);
-        if (context->currentActionNumber != 1) {
+        uint32_t sizeValue = 0;
+        unpack_fc_unsigned_int(context->sizeBuffer, context->currentFieldPos + 1, &sizeValue);
+        if (sizeValue != 1) {
             PRINTF("processActionListSizeField Action Number must be 1\n");
             THROW(EXCEPTION);
         }
         // Reset size buffer
-        context->currentActionIndex = 0;
         os_memset(context->sizeBuffer, 0, sizeof(context->sizeBuffer));
 
         context->state++;
@@ -252,7 +326,9 @@ static void processActionAccount(txProcessingContext_t *context) {
                 : context->currentFieldLength - context->currentFieldPos);
 
         hashTxData(context, context->workBuffer, length);
-        os_memmove(context->nameTypeBuffer + context->currentFieldPos, context->workBuffer, length);
+        
+        uint8_t *pContract = (uint8_t *)&context->contractName;
+        os_memmove(pContract + context->currentFieldPos, context->workBuffer, length);
 
         context->workBuffer += length;
         context->commandLength -= length;
@@ -263,10 +339,8 @@ static void processActionAccount(txProcessingContext_t *context) {
         context->state++;
         context->processingField = false;
 
-        // TODO: MAYBE THAT WITH REAL TX IT WILL not reverse
-        name_t account = buffer_to_name_type(context->nameTypeBuffer, sizeof(context->nameTypeBuffer));
-        os_memset(context->content->accountName, 0, sizeof(context->content->accountName));
-        name_to_string(account, context->content->accountName, sizeof(context->content->accountName));
+        os_memset(context->content->contract, 0, sizeof(context->content->contract));
+        name_to_string(context->contractName, context->content->contract, sizeof(context->content->contract));
     }
 }
 
@@ -283,7 +357,9 @@ static void processActionName(txProcessingContext_t *context) {
                 : context->currentFieldLength - context->currentFieldPos);
 
         hashTxData(context, context->workBuffer, length);
-        os_memmove(context->nameTypeBuffer + context->currentFieldPos, context->workBuffer, length);
+
+        uint8_t *pAction = (uint8_t *)&context->contractActionName;
+        os_memmove(pAction + context->currentFieldPos, context->workBuffer, length);
 
         context->workBuffer += length;
         context->commandLength -= length;
@@ -294,10 +370,8 @@ static void processActionName(txProcessingContext_t *context) {
         context->state++;
         context->processingField = false;
 
-        // TODO: Maybe with real tx it will be not reverse
-        name_t name = buffer_to_name_type(context->nameTypeBuffer, sizeof(context->nameTypeBuffer));
-        os_memset(context->content->actionName, 0, sizeof(context->content->actionName));
-        name_to_string(name, context->content->actionName, sizeof(context->content->actionName));
+        os_memset(context->content->action, 0, sizeof(context->content->action));
+        name_to_string(context->contractActionName, context->content->action, sizeof(context->content->action));
     }
 }
 
@@ -429,19 +503,16 @@ static void processActionData(txProcessingContext_t *context) {
     }
 
     if (context->currentFieldPos == context->currentFieldLength) {
-        context->currentActionIndex++;
-        if (context->currentActionIndex == context->currentActionNumber) {
-            // We processed last action field
-            context->currentActionNumber = 0;
-            context->currentActionIndex = 0;
             context->currentActionDataBufferLength = context->currentFieldLength;
 
-            context->state++;
+        //                          eosio.token                                  transfer
+        if (context->contractName == 0x5530EA033482A600 && context->contractActionName == 0xCDCD3C2D57000000) {
+            parseEosioTokenTransfer(context);
+            context->state = TLV_TX_EXTENSION_LIST_SIZE;
         } else {
-            // still iterating
-            context->state = TLV_ACTION_DATA;
+            THROW(EXCEPTION);
+            context->state++;
         }
-        
         context->processingField = false;
     }
 }

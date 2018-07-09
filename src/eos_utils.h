@@ -22,7 +22,7 @@
 #include <stdint.h>
 
 unsigned char buffer_to_encoded_base58(unsigned char *in, unsigned char length,
-                         unsigned char *out,
+                         char *out,
                          unsigned char maxoutlen);
 
 void array_hexstr(char *strbuf, const void *bin, unsigned int len);
@@ -38,7 +38,7 @@ int ecdsa_der_to_sig(const uint8_t *der, uint8_t *sig);
 void rng_rfc6979(unsigned char *rnd,
                  unsigned char *h1,
                  unsigned char *x, unsigned int x_len,
-                 unsigned char *q, unsigned int q_len,
+                 const unsigned char *q, unsigned int q_len,
                  unsigned char *V, unsigned char *K);
 
 #endif

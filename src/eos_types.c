@@ -178,7 +178,7 @@ uint32_t unpack_fc_unsigned_int(uint8_t *in, uint32_t length, fc_unsigned_int_t 
     return i;
 }
 
-uint32_t public_key_to_wif(uint8_t *publicKey, uint32_t keyLength, uint8_t *out, uint32_t outLength) {
+uint32_t public_key_to_wif(uint8_t *publicKey, uint32_t keyLength, char *out, uint32_t outLength) {
     if (publicKey == NULL || keyLength < 33) {
         THROW(INVALID_PARAMETER);
     }

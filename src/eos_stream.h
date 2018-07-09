@@ -33,9 +33,9 @@
 #define PUBLIC_KEY_TYPE 3
 
 typedef struct txProcessingContent_t {
-    char accountName[14];
-    char actionName[14];
-    char actionData[512];
+    char contract[14];
+    char action[14];
+    char data[512];
 } txProcessingContent_t;
 
 typedef enum txProcessingState_e {
@@ -67,8 +67,6 @@ typedef struct txProcessingContext_t {
     cx_sha256_t *sha256;
     uint32_t currentFieldLength;
     uint32_t currentFieldPos;
-    uint32_t currentActionIndex;
-    uint32_t currentActionNumber;
     uint32_t currentAutorizationIndex;
     uint32_t currentAutorizationNumber;
     uint32_t currentActionDataTypeNumber;
@@ -78,7 +76,8 @@ typedef struct txProcessingContext_t {
     uint32_t tlvBufferPos;
     uint8_t *workBuffer;
     uint32_t commandLength;
-    uint8_t nameTypeBuffer[8];
+    name_t contractName;
+    name_t contractActionName;
     uint8_t sizeBuffer[12];
     uint8_t actionDataTypeBuffer[64];
     uint8_t actionDataBuffer[512];

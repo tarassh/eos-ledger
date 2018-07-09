@@ -59,6 +59,6 @@ uint8_t name_to_string(name_t value, char *out, uint32_t size);
 
 uint8_t asset_to_string(asset_t *asset, char *out, uint32_t size);
 
-uint32_t public_key_to_wif(uint8_t *publicKey, uint32_t keyLength, uint8_t *out, uint32_t outLength);
+uint32_t public_key_to_wif(uint8_t *publicKey, uint32_t keyLength, char *out, uint32_t outLength);
 
 #endif // __EOS_TYPES_H__

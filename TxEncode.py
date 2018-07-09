@@ -1,4 +1,4 @@
-from asn1 import Encoder, Decoder, Numbers
+from asn1 import Encoder, Numbers
 import binascii
 
 encoder = Encoder()

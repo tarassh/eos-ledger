@@ -88,8 +88,7 @@ union {
 txProcessingContext_t txProcessingCtx;
 txProcessingContent_t txContent;
 
-// volatile uint8_t dataAllowed;
-// volatile uint8_t fidoTransport;
+volatile uint8_t dataAllowed;
 volatile char fullAddress[60];
 volatile bool dataPresent;
 volatile bool skipWarning;
@@ -104,7 +103,6 @@ unsigned int ux_step_count;
 typedef struct internalStorage_t
 {
     uint8_t dataAllowed;
-    uint8_t fidoTransport;
     uint8_t initialized;
 } internalStorage_t;
 
@@ -120,7 +118,7 @@ const bagl_element_t *ui_menu_item_out_over(const bagl_element_t *e)
 
 const ux_menu_entry_t menu_main[];
 const ux_menu_entry_t menu_settings[];
-const ux_menu_entry_t menu_settings_browser[];
+const ux_menu_entry_t menu_settings_data[];
 
 #ifdef HAVE_U2F
 
@@ -133,30 +131,11 @@ void menu_settings_data_change(unsigned int enabled)
     UX_MENU_DISPLAY(0, menu_settings, NULL);
 }
 
-#ifdef HAVE_U2F
-// change the setting
-void menu_settings_browser_change(unsigned int enabled)
-{
-    uint8_t fidoTransport = enabled;
-    nvm_write(&N_storage.fidoTransport, (void *)&fidoTransport,
-              sizeof(uint8_t));
-    // go back to the menu entry
-    UX_MENU_DISPLAY(1, menu_settings, NULL);
-}
-
 // show the currently activated entry
-void menu_settings_browser_init(unsigned int ignored)
-{
-    UNUSED(ignored);
-    UX_MENU_DISPLAY(N_storage.fidoTransport ? 1 : 0, menu_settings_browser,
-                    NULL);
+void menu_settings_data_init(unsigned int ignored) {
+  UNUSED(ignored);
+  UX_MENU_DISPLAY(N_storage.dataAllowed?1:0, menu_settings_data, NULL);
 }
-
-const ux_menu_entry_t menu_settings_browser[] = {
-    {NULL, menu_settings_browser_change, 0, NULL, "No", NULL, 0, 0},
-    {NULL, menu_settings_browser_change, 1, NULL, "Yes", NULL, 0, 0},
-    UX_MENU_END};
-#endif // HAVE_U2F
 
 const ux_menu_entry_t menu_settings_data[] = {
     {NULL, menu_settings_data_change, 0, NULL, "No", NULL, 0, 0},
@@ -164,9 +143,7 @@ const ux_menu_entry_t menu_settings_data[] = {
     UX_MENU_END};
 
 const ux_menu_entry_t menu_settings[] = {
-#ifdef HAVE_U2F
-    {NULL, menu_settings_browser_init, 0, NULL, "Browser support", NULL, 0, 0},
-#endif // HAVE_U2F
+    {NULL, menu_settings_data_init, 0, NULL, "Arbitrary data", NULL, 0, 0},
     {menu_main, NULL, 1, &C_icon_back, "Back", NULL, 61, 40},
     UX_MENU_END};
 #endif // HAVE_U2F
@@ -1046,7 +1023,6 @@ __attribute__((section(".boot"))) int main(void)
                 {
                     internalStorage_t storage;
                     storage.dataAllowed = 0x00;
-                    storage.fidoTransport = 0x00;
                     storage.initialized = 0x01;
                     nvm_write(&N_storage, (void *)&storage,
                               sizeof(internalStorage_t));

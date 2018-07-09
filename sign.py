@@ -1,4 +1,4 @@
-# from asn1 import Encoder, Decoder, Numbers
+from asn1 import Encoder, Decoder, Numbers
 import binascii
 from ledgerblue.comm import getDongle
 from ledgerblue.commException import CommException

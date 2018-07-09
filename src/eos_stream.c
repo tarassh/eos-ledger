@@ -112,7 +112,7 @@ static void parseActionData(txProcessingContext_t *context) {
  * dependencies on specific hash implementation.
 */
 static void hashTxData(txProcessingContext_t *context, uint8_t *buffer, uint32_t length) {
-    cx_hash(&context->sha256->header, 0, buffer, length, NULL, 0);
+    cx_hash(&context->sha256->header, 0, buffer, length, NULL);
 }
 
 /**

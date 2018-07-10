@@ -732,7 +732,7 @@ static parserStatus_e processTxInternal(txProcessingContext_t *context) {
  * Flat map is used in order to avoid nesting complexity.
  * 
  * Buffer serialization example:
- * [chain id][header][action number (N)][action 0][action 1]...[action N][]
+ * [chain id][header][action number (1)][action 0][...]
  * Each field is encoded by DER rules.
  * Chain id field will be encoded next way:
  *  [Tag][Length][Value]

@@ -21,6 +21,14 @@
 #include "eos_types.h"
 #include "eos_utils.h"
 
+#define EOSIO_TOKEN          0x5530EA033482A600
+#define EOSIO_TOKEN_TRANSFER 0xCDCD3C2D57000000
+
+#define EOSIO                0x5530EA0000000000
+#define EOSIO_DELEGATEBW     0x4AA2A61B2A3F0000
+#define EOSIO_UNDELEGATEBW   0xD4D2A8A986CA8FC0
+
+
 void initTxContext(txProcessingContext_t *context, 
                    cx_sha256_t *sha256, 
                    txProcessingContent_t *processingContent) {
@@ -42,7 +50,9 @@ uint8_t readTxByte(txProcessingContext_t *context) {
     context->commandLength--;
     return data;
 }
-
+/**
+ * Parse eosio.token transfer action
+*/
 static void parseEosioTokenTransfer(txProcessingContext_t *context) {
     uint32_t fieldLength = 0;
     uint32_t displayBufferLength = sizeof(context->content->data);
@@ -112,6 +122,74 @@ static void parseEosioTokenTransfer(txProcessingContext_t *context) {
     }
 
     os_memmove(displayBuffer, buffer + read, fieldLength);
+}
+
+/**
+ * Parse eosio delegate/undgelegate action
+*/
+static void parseEosioDelegateUndlegate(txProcessingContext_t *context) {
+    uint32_t fieldLength = 0;
+    uint32_t displayBufferLength = sizeof(context->content->data);
+    char *displayBuffer = context->content->data;
+
+    uint32_t bufferLength = context->currentActionDataBufferLength;
+    uint8_t *buffer = context->actionDataBuffer;
+
+    os_memset(displayBuffer, 0, displayBufferLength);
+
+    // parse From account and To account foelds
+    if (bufferLength < sizeof(name_t) * 2) {
+        PRINTF("parseActionData Insufficient buffer\n");
+        THROW(EXCEPTION);
+    }
+
+    // Parse data from buffer
+    // Write parsed data to dispaly buffer
+    name_t name = buffer_to_name_type(buffer, 8);
+    fieldLength = name_to_string(name, displayBuffer, displayBufferLength);
+
+    buffer += sizeof(name_t);
+    bufferLength -= sizeof(name_t);
+
+    displayBuffer += fieldLength;
+    displayBufferLength -= fieldLength;
+    *displayBuffer = ' ';
+    displayBuffer++;
+    displayBufferLength--;
+
+    name = buffer_to_name_type(buffer, sizeof(name_t));
+    fieldLength = name_to_string(name, displayBuffer, displayBufferLength);
+
+    buffer += sizeof(name_t);
+    bufferLength -= sizeof(name_t);
+
+    displayBuffer += fieldLength;
+    displayBufferLength -= fieldLength;
+    *displayBuffer = ' ';
+    displayBuffer++;
+    displayBufferLength--;
+
+    // parse Asset field
+    if (bufferLength < sizeof(asset_t) * 2) {
+        PRINTF("parseActionData Insufficient buffer\n");
+        THROW(EXCEPTION);
+    }
+
+    asset_t asset;
+    os_memmove(&asset, buffer, sizeof(asset));
+    fieldLength = asset_to_string(&asset, displayBuffer, displayBufferLength); 
+
+    buffer += sizeof(asset_t);
+    bufferLength -= sizeof(asset_t);
+
+    displayBuffer += fieldLength;
+    displayBufferLength -= fieldLength;
+    *displayBuffer = ' ';
+    displayBuffer++;
+    displayBufferLength--;
+
+    os_memmove(&asset, buffer, sizeof(asset));
+    fieldLength = asset_to_string(&asset, displayBuffer, displayBufferLength); 
 }
 
 /**
@@ -503,11 +581,18 @@ static void processActionData(txProcessingContext_t *context) {
     }
 
     if (context->currentFieldPos == context->currentFieldLength) {
-            context->currentActionDataBufferLength = context->currentFieldLength;
+        context->currentActionDataBufferLength = context->currentFieldLength;
 
-        //                          eosio.token                                  transfer
-        if (context->contractName == 0x5530EA033482A600 && context->contractActionName == 0xCDCD3C2D57000000) {
+        if (context->contractName == EOSIO_TOKEN &&  
+            context->contractActionName == EOSIO_TOKEN_TRANSFER
+        ) {
             parseEosioTokenTransfer(context);
+            context->state = TLV_TX_EXTENSION_LIST_SIZE;
+        } else if (context->contractName == EOSIO &&
+                  (context->contractActionName == EOSIO_DELEGATEBW || 
+                   context->contractActionName == EOSIO_UNDELEGATEBW) 
+        ) {
+            parseEosioDelegateUndlegate(context);
             context->state = TLV_TX_EXTENSION_LIST_SIZE;
         } else {
             THROW(EXCEPTION);

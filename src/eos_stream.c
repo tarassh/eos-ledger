@@ -15,6 +15,7 @@
 *  limitations under the License.
 ********************************************************************************/
 
+#include <string.h>
 #include "eos_stream.h"
 #include "os.h"
 #include "cx.h"
@@ -71,6 +72,11 @@ static void parseEosioTokenTransfer(txProcessingContext_t *context) {
 
     // Parse data from buffer
     // Write parsed data to dispaly buffer
+    const char from[] = "from ";
+    os_memmove(displayBuffer, from, strlen(from));
+    displayBuffer += strlen(from);
+    displayBufferLength -= strlen(from);
+
     name_t name = buffer_to_name_type(buffer, 8);
     fieldLength = name_to_string(name, displayBuffer, displayBufferLength);
 
@@ -82,6 +88,11 @@ static void parseEosioTokenTransfer(txProcessingContext_t *context) {
     *displayBuffer = ' ';
     displayBuffer++;
     displayBufferLength--;
+
+    const char to[] = "to ";
+    os_memmove(displayBuffer, to, strlen(to));
+    displayBuffer += strlen(to);
+    displayBufferLength -= strlen(to);
 
     name = buffer_to_name_type(buffer, sizeof(name_t));
     fieldLength = name_to_string(name, displayBuffer, displayBufferLength);
@@ -145,6 +156,11 @@ static void parseEosioDelegateUndlegate(txProcessingContext_t *context) {
 
     // Parse data from buffer
     // Write parsed data to dispaly buffer
+    const char from[] = "from ";
+    os_memmove(displayBuffer, from, strlen(from));
+    displayBuffer += strlen(from);
+    displayBufferLength -= strlen(from);
+
     name_t name = buffer_to_name_type(buffer, 8);
     fieldLength = name_to_string(name, displayBuffer, displayBufferLength);
 
@@ -156,6 +172,11 @@ static void parseEosioDelegateUndlegate(txProcessingContext_t *context) {
     *displayBuffer = ' ';
     displayBuffer++;
     displayBufferLength--;
+
+    const char receiver[] = "receiver ";
+    os_memmove(displayBuffer, receiver, strlen(receiver));
+    displayBuffer += strlen(receiver);
+    displayBufferLength -= strlen(receiver);
 
     name = buffer_to_name_type(buffer, sizeof(name_t));
     fieldLength = name_to_string(name, displayBuffer, displayBufferLength);
@@ -175,6 +196,11 @@ static void parseEosioDelegateUndlegate(txProcessingContext_t *context) {
         THROW(EXCEPTION);
     }
 
+    const char net[] = "NET ";
+    os_memmove(displayBuffer, net, strlen(net));
+    displayBuffer += strlen(net);
+    displayBufferLength -= strlen(net);
+
     asset_t asset;
     os_memmove(&asset, buffer, sizeof(asset));
     fieldLength = asset_to_string(&asset, displayBuffer, displayBufferLength); 
@@ -188,8 +214,16 @@ static void parseEosioDelegateUndlegate(txProcessingContext_t *context) {
     displayBuffer++;
     displayBufferLength--;
 
+    const char cpu[] = "CPU ";
+    os_memmove(displayBuffer, cpu, strlen(cpu));
+    displayBuffer += strlen(cpu);
+    displayBufferLength -= strlen(cpu);
+
     os_memmove(&asset, buffer, sizeof(asset));
     fieldLength = asset_to_string(&asset, displayBuffer, displayBufferLength); 
+
+    displayBuffer += fieldLength;
+    *displayBuffer = 0;
 }
 
 /**

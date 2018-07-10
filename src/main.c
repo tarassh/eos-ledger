@@ -143,7 +143,7 @@ const ux_menu_entry_t menu_settings_data[] = {
     UX_MENU_END};
 
 const ux_menu_entry_t menu_settings[] = {
-    {NULL, menu_settings_data_init, 0, NULL, "Arbitrary data", NULL, 0, 0},
+    // {NULL, menu_settings_data_init, 0, NULL, "Arbitrary data", NULL, 0, 0},
     {menu_main, NULL, 1, &C_icon_back, "Back", NULL, 61, 40},
     UX_MENU_END};
 #endif // HAVE_U2F

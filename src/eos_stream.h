@@ -56,7 +56,6 @@ typedef enum txProcessingState_e {
     TLV_AUTHORIZATION_PERMISSION,
     TLV_ACTION_DATA_SIZE,
     TLV_ACTION_DATA,
-    TLV_ACTION_DATA_TYPES,
     TLV_TX_EXTENSION_LIST_SIZE,
     TLV_CONTEXT_FREE_DATA,
     TLV_DONE
@@ -69,7 +68,6 @@ typedef struct txProcessingContext_t {
     uint32_t currentFieldPos;
     uint32_t currentAutorizationIndex;
     uint32_t currentAutorizationNumber;
-    uint32_t currentActionDataTypeNumber;
     uint32_t currentActionDataBufferLength;
     bool processingField;
     uint8_t tlvBuffer[5];
@@ -79,7 +77,6 @@ typedef struct txProcessingContext_t {
     name_t contractName;
     name_t contractActionName;
     uint8_t sizeBuffer[12];
-    uint8_t actionDataTypeBuffer[64];
     uint8_t actionDataBuffer[512];
     txProcessingContent_t *content;
 } txProcessingContext_t;

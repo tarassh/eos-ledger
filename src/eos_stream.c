@@ -203,89 +203,6 @@ static void parseEosioDelegateUndlegate(txProcessingContext_t *context) {
 }
 
 /**
- * Parse action data
-*/
-static void parseActionData(txProcessingContext_t *context) {
-    uint32_t i = 0;
-    uint32_t fieldLength = 0;
-    uint32_t displayBufferLength = sizeof(context->content->data);
-    char *displayBuffer = context->content->data;
-
-    os_memset(displayBuffer, 0, displayBufferLength);
-
-    while (i < context->currentActionDataTypeNumber) {
-        uint8_t type = context->actionDataTypeBuffer[i++];
-        uint8_t offset = context->actionDataTypeBuffer[i++];
-        uint32_t bufferLength = context->currentActionDataBufferLength - offset;
-        uint8_t *buffer = context->actionDataBuffer + offset;
-
-        switch (type) {
-        case NAME_TYPE:
-            {
-                if (bufferLength < 8) {
-                    PRINTF("parseActionData Insufficient buffer\n");
-                    THROW(EXCEPTION);
-                }
-
-                // Parse data from buffer
-                name_t name = buffer_to_name_type(buffer, 8);
-
-                // Write parsed data to dispaly buffer
-                fieldLength = name_to_string(name, displayBuffer, displayBufferLength);
-            }
-            break;
-        case STRING_TYPE:
-            {
-                uint32_t read = unpack_fc_unsigned_int(buffer, bufferLength, &fieldLength);
-                if (bufferLength < fieldLength) {
-                    PRINTF("parseActionData Insufficient buffer\n");
-                    THROW(EXCEPTION);
-                }
-
-                os_memmove(displayBuffer, buffer + read, fieldLength);
-            }
-            break;
-        case ASSET_TYPE: 
-            {
-                asset_t asset;
-                if (bufferLength < sizeof(asset)) {
-                    PRINTF("parseActionData Insufficient buffer\n");
-                    THROW(EXCEPTION);
-                }
-
-                os_memmove(&asset, buffer, sizeof(asset));
-
-                // write data to buffer
-                fieldLength = asset_to_string(&asset, displayBuffer, displayBufferLength);
-            }
-            break;
-        case PUBLIC_KEY_TYPE:
-            {
-                if (bufferLength < 33) {
-                    PRINTF("parseActionData Insufficient buffer\n");
-                    THROW(EXCEPTION);
-                }
-
-                fieldLength = public_key_to_wif(buffer, bufferLength, displayBuffer, displayBufferLength);
-            }
-            break;
-        default:
-            PRINTF("parseActionData Unimplemented type\n");
-            THROW(EXCEPTION);
-        }
-        displayBuffer += fieldLength;
-        displayBufferLength -= fieldLength;
-
-        if (i < context->currentActionDataTypeNumber) {
-            *displayBuffer = ' ';
-            displayBuffer++;
-            displayBufferLength--;
-        } 
-
-    }
-}
-
-/**
  * Sequentially hash an incoming data.
  * Hash functionality is moved out here in order to reduce 
  * dependencies on specific hash implementation.
@@ -533,40 +450,6 @@ static void processAuthorizationPermission(txProcessingContext_t *context) {
 }
 
 /**
- * Process data types that should be used in order to parse data.
- * This data isn't used for hashing.
-*/
-static void processActionDataTypes(txProcessingContext_t *context) {
-    if (context->currentFieldLength > sizeof(context->actionDataTypeBuffer)) {
-        PRINTF("processActionDataTypes data overflow\n");
-        THROW(EXCEPTION);
-    }
-
-    if (context->currentFieldPos < context->currentFieldLength) {
-        uint32_t length = 
-            (context->commandLength <
-                     ((context->currentFieldLength - context->currentFieldPos))
-                ? context->commandLength
-                : context->currentFieldLength - context->currentFieldPos);
-        
-        os_memmove(context->actionDataTypeBuffer + context->currentFieldPos, context->workBuffer, length);
-
-        context->workBuffer += length;
-        context->commandLength -= length;
-        context->currentFieldPos += length;
-    }
-
-    if (context->currentFieldPos == context->currentFieldLength) {
-        context->currentActionDataTypeNumber = context->currentFieldLength;
-
-        parseActionData(context);
-
-        context->state++;
-        context->processingField = false;        
-    }
-}
-
-/**
  * Process current action data field and store in into data buffer.
 */
 static void processActionData(txProcessingContext_t *context) {
@@ -596,18 +479,16 @@ static void processActionData(txProcessingContext_t *context) {
         if (context->contractName == EOSIO_TOKEN &&  
             context->contractActionName == EOSIO_TOKEN_TRANSFER
         ) {
-            parseEosioTokenTransfer(context);
-            context->state = TLV_TX_EXTENSION_LIST_SIZE;
+            parseEosioTokenTransfer(context);           
         } else if (context->contractName == EOSIO &&
                   (context->contractActionName == EOSIO_DELEGATEBW || 
                    context->contractActionName == EOSIO_UNDELEGATEBW) 
         ) {
             parseEosioDelegateUndlegate(context);
-            context->state = TLV_TX_EXTENSION_LIST_SIZE;
         } else {
             THROW(EXCEPTION);
-            context->state++;
         }
+        context->state = TLV_TX_EXTENSION_LIST_SIZE;
         context->processingField = false;
     }
 }
@@ -699,10 +580,6 @@ static parserStatus_e processTxInternal(txProcessingContext_t *context) {
         
         case TLV_ACTION_DATA:
             processActionData(context);
-            break;
-
-        case TLV_ACTION_DATA_TYPES:
-            processActionDataTypes(context);
             break;
 
         case TLV_TX_EXTENSION_LIST_SIZE:

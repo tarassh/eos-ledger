@@ -47,7 +47,7 @@ if args.path is None:
     args.path = "44'/194'/0'/0/0"
 
 donglePath = parse_bip32_path(args.path)
-apdu = "E0020001".decode('hex') + chr(len(donglePath) + 1) + chr(len(donglePath) / 4) + donglePath
+apdu = "D4020001".decode('hex') + chr(len(donglePath) + 1) + chr(len(donglePath) / 4) + donglePath
 
 dongle = getDongle(True)
 result = dongle.exchange(bytes(apdu))
@@ -69,5 +69,5 @@ buff = public_key_compressed + check
 print "Calculated from public key: Address EOS" + b58encode(str(buff))
 print "      Received from ledger: Address " + str(address)
 
-apdu = "E0020101".decode('hex') + chr(len(donglePath) + 1) + chr(len(donglePath) / 4) + donglePath
+apdu = "D4020101".decode('hex') + chr(len(donglePath) + 1) + chr(len(donglePath) / 4) + donglePath
 result = dongle.exchange(bytes(apdu))

@@ -40,7 +40,7 @@ uint32_t set_result_get_publicKey(void);
 
 #define MAX_BIP32_PATH 10
 
-#define CLA 0xE0
+#define CLA 0xD4
 #define INS_GET_PUBLIC_KEY 0x02
 #define INS_SIGN 0x04
 #define INS_GET_APP_CONFIGURATION 0x06

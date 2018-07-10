@@ -220,11 +220,11 @@ while offset != singSize:
 
     if first:
         totalSize = len(donglePath) + 1 + len(chunk)
-        apdu = "e0040000".decode('hex') + chr(totalSize) + chr(pathSize) + donglePath + chunk
+        apdu = "D4040000".decode('hex') + chr(totalSize) + chr(pathSize) + donglePath + chunk
         first = False
     else:
         totalSize = len(chunk)
-        apdu = "e0048000".decode('hex') + chr(totalSize) + chunk
+        apdu = "D4048000".decode('hex') + chr(totalSize) + chunk
 
     offset += len(chunk)
     result = dongle.exchange(bytes(apdu))

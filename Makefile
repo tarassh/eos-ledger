@@ -26,7 +26,7 @@ APPVERSION_N=0
 APPVERSION_P=0
 APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
 
-APPNAME = eos
+APPNAME = Eos
 APP_LOAD_PARAMS += --appFlags 0x40 --path "44'/194'" --curve secp256k1 $(COMMON_LOAD_PARAMS) 
 
 #prepare hsm generation
@@ -59,7 +59,7 @@ DEFINES   += APPVERSION=\"$(APPVERSION)\"
 
 DEFINES   += CX_COMPLIANCE_141
 
-DEFINES   += DEBUG_APP
+# DEFINES   += DEBUG_APP
 
 ##############
 #  Compiler  #

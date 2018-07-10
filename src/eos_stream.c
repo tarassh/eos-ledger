@@ -51,11 +51,114 @@ uint8_t readTxByte(txProcessingContext_t *context) {
     context->commandLength--;
     return data;
 }
+
+static void parseNameField(uint8_t *in, uint32_t inLength, const char fieldName[], bool last, char *out, uint32_t outLen, uint32_t *read, uint32_t *written) {
+    if (inLength < sizeof(name_t)) {
+        PRINTF("parseActionData Insufficient buffer\n");
+        THROW(EXCEPTION);
+    }
+    uint32_t totalLength = strlen(fieldName);
+
+    os_memmove(out, fieldName, totalLength);
+    out += totalLength;
+    outLen -= totalLength;
+    if (totalLength > 0) {
+        *out = ' ';
+        out++;
+        outLen--;
+        totalLength++;
+    }
+
+    name_t name = buffer_to_name_type(in, sizeof(name_t));
+    uint32_t writtenToBuff = name_to_string(name, out, outLen);
+
+    out += writtenToBuff;
+    outLen -= writtenToBuff;
+    totalLength += writtenToBuff;
+
+    *out = last ? 0 : ' ';
+    totalLength += last ? 0 : 1;
+
+    *read = sizeof(name_t);
+    *written = totalLength;
+}
+
+static void parseAssetField(uint8_t *in, uint32_t inLength, const char fieldName[], bool last, char *out, uint32_t outLen, uint32_t *read, uint32_t *written) {
+    if (inLength < sizeof(asset_t)) {
+        PRINTF("parseActionData Insufficient buffer\n");
+        THROW(EXCEPTION);
+    }
+    uint32_t totalLength = strlen(fieldName);
+
+    os_memmove(out, fieldName, totalLength);
+    out += totalLength;
+    outLen -= totalLength;
+    if (totalLength > 0) {
+        *out = ' ';
+        out++;
+        outLen--;
+        totalLength++;
+    }
+
+    asset_t asset;
+    os_memmove(&asset, in, sizeof(asset));
+    uint32_t writtenToBuff = asset_to_string(&asset, out, outLen); 
+
+    out += writtenToBuff;
+    outLen -= writtenToBuff;
+    totalLength += writtenToBuff;
+
+    *out = last ? 0 : ' ';
+    totalLength += last ? 0 : 1;
+
+    *read = sizeof(asset_t);
+
+    *written = totalLength;
+}
+
+static void parseStringField(uint8_t *in, uint32_t inLength, const char fieldName[], bool last, char *out, uint32_t outLen, uint32_t *read, uint32_t *written) {
+    uint32_t totalLength = strlen(fieldName);
+    os_memmove(out, fieldName, totalLength);
+    out += totalLength;
+    outLen -= totalLength;
+    if (totalLength > 0) {
+        *out = ' ';
+        out++;
+        outLen--;
+        totalLength++;
+    }
+
+    uint32_t fieldLength = 0;
+    uint32_t readFromBuffer = unpack_fc_unsigned_int(in, inLength, &fieldLength);
+    if (inLength < fieldLength) {
+        PRINTF("parseActionData Insufficient buffer\n");
+        THROW(EXCEPTION);
+    }
+    in += readFromBuffer;
+    inLength -= readFromBuffer;
+
+    os_memmove(out, in, fieldLength);
+
+    in += fieldLength;
+    inLength -= fieldLength;
+
+    out += fieldLength;
+    outLen -= fieldLength;
+    totalLength += fieldLength;
+
+    *out = last ? 0 : ' ';
+    totalLength += last ? 0 : 1;
+
+    *read = readFromBuffer + fieldLength;
+    *written = totalLength;
+}
+
 /**
  * Parse eosio.token transfer action
 */
 static void parseEosioTokenTransfer(txProcessingContext_t *context) {
-    uint32_t fieldLength = 0;
+    uint32_t read = 0;
+    uint32_t written = 0;
     uint32_t displayBufferLength = sizeof(context->content->data);
     char *displayBuffer = context->content->data;
 
@@ -63,83 +166,22 @@ static void parseEosioTokenTransfer(txProcessingContext_t *context) {
     uint8_t *buffer = context->actionDataBuffer;
 
     os_memset(displayBuffer, 0, displayBufferLength);
-
-    // parse From account and To account foelds
-    if (bufferLength < sizeof(name_t) * 2) {
-        PRINTF("parseActionData Insufficient buffer\n");
-        THROW(EXCEPTION);
-    }
-
-    // Parse data from buffer
-    // Write parsed data to dispaly buffer
-    const char from[] = "from ";
-    os_memmove(displayBuffer, from, strlen(from));
-    displayBuffer += strlen(from);
-    displayBufferLength -= strlen(from);
-
-    name_t name = buffer_to_name_type(buffer, 8);
-    fieldLength = name_to_string(name, displayBuffer, displayBufferLength);
-
-    buffer += sizeof(name_t);
-    bufferLength -= sizeof(name_t);
-
-    displayBuffer += fieldLength;
-    displayBufferLength -= fieldLength;
-    *displayBuffer = ' ';
-    displayBuffer++;
-    displayBufferLength--;
-
-    const char to[] = "to ";
-    os_memmove(displayBuffer, to, strlen(to));
-    displayBuffer += strlen(to);
-    displayBufferLength -= strlen(to);
-
-    name = buffer_to_name_type(buffer, sizeof(name_t));
-    fieldLength = name_to_string(name, displayBuffer, displayBufferLength);
-
-    buffer += sizeof(name_t);
-    bufferLength -= sizeof(name_t);
-
-    displayBuffer += fieldLength;
-    displayBufferLength -= fieldLength;
-    *displayBuffer = ' ';
-    displayBuffer++;
-    displayBufferLength--;
-
-    // parse Asset field
-    if (bufferLength < sizeof(asset_t)) {
-        PRINTF("parseActionData Insufficient buffer\n");
-        THROW(EXCEPTION);
-    }
-
-    asset_t asset;
-    os_memmove(&asset, buffer, sizeof(asset));
-    fieldLength = asset_to_string(&asset, displayBuffer, displayBufferLength); 
-
-    buffer += sizeof(asset_t);
-    bufferLength -= sizeof(asset_t);
-
-    displayBuffer += fieldLength;
-    displayBufferLength -= fieldLength;
-    *displayBuffer = ' ';
-    displayBuffer++;
-    displayBufferLength--;
-
-    // parse Memo field
-    uint32_t read = unpack_fc_unsigned_int(buffer, bufferLength, &fieldLength);
-    if (bufferLength < fieldLength) {
-        PRINTF("parseActionData Insufficient buffer\n");
-        THROW(EXCEPTION);
-    }
-
-    os_memmove(displayBuffer, buffer + read, fieldLength);
+    
+    parseNameField(buffer, bufferLength, "from", false, displayBuffer, displayBufferLength, &read, &written);
+    buffer += read; bufferLength -= read;
+    displayBuffer += written; displayBufferLength -= written;
+    parseNameField(buffer, bufferLength, "to", false, displayBuffer, displayBufferLength, &read, &written);
+    buffer += read; bufferLength -= read;
+    displayBuffer += written; displayBufferLength -= written;
+    parseAssetField(buffer, bufferLength, "", false, displayBuffer, displayBufferLength, &read, &written);
+    buffer += read; bufferLength -= read;
+    displayBuffer += written; displayBufferLength -= written;
+    parseStringField(buffer, bufferLength, "", true, displayBuffer, displayBufferLength, &read, &written);
 }
 
-/**
- * Parse eosio delegate/undgelegate action
-*/
 static void parseEosioDelegateUndlegate(txProcessingContext_t *context) {
-    uint32_t fieldLength = 0;
+    uint32_t read = 0;
+    uint32_t written = 0;
     uint32_t displayBufferLength = sizeof(context->content->data);
     char *displayBuffer = context->content->data;
 
@@ -148,86 +190,20 @@ static void parseEosioDelegateUndlegate(txProcessingContext_t *context) {
 
     os_memset(displayBuffer, 0, displayBufferLength);
 
-    // parse From account and To account foelds
-    if (bufferLength < sizeof(name_t) * 2) {
-        PRINTF("parseActionData Insufficient buffer\n");
-        THROW(EXCEPTION);
-    }
-
-    // Parse data from buffer
-    // Write parsed data to dispaly buffer
-    const char from[] = "from ";
-    os_memmove(displayBuffer, from, strlen(from));
-    displayBuffer += strlen(from);
-    displayBufferLength -= strlen(from);
-
-    name_t name = buffer_to_name_type(buffer, 8);
-    fieldLength = name_to_string(name, displayBuffer, displayBufferLength);
-
-    buffer += sizeof(name_t);
-    bufferLength -= sizeof(name_t);
-
-    displayBuffer += fieldLength;
-    displayBufferLength -= fieldLength;
-    *displayBuffer = ' ';
-    displayBuffer++;
-    displayBufferLength--;
-
-    const char receiver[] = "receiver ";
-    os_memmove(displayBuffer, receiver, strlen(receiver));
-    displayBuffer += strlen(receiver);
-    displayBufferLength -= strlen(receiver);
-
-    name = buffer_to_name_type(buffer, sizeof(name_t));
-    fieldLength = name_to_string(name, displayBuffer, displayBufferLength);
-
-    buffer += sizeof(name_t);
-    bufferLength -= sizeof(name_t);
-
-    displayBuffer += fieldLength;
-    displayBufferLength -= fieldLength;
-    *displayBuffer = ' ';
-    displayBuffer++;
-    displayBufferLength--;
-
-    // parse Asset field
-    if (bufferLength < sizeof(asset_t) * 2) {
-        PRINTF("parseActionData Insufficient buffer\n");
-        THROW(EXCEPTION);
-    }
-
-    const char net[] = "NET ";
-    os_memmove(displayBuffer, net, strlen(net));
-    displayBuffer += strlen(net);
-    displayBufferLength -= strlen(net);
-
-    asset_t asset;
-    os_memmove(&asset, buffer, sizeof(asset));
-    fieldLength = asset_to_string(&asset, displayBuffer, displayBufferLength); 
-
-    buffer += sizeof(asset_t);
-    bufferLength -= sizeof(asset_t);
-
-    displayBuffer += fieldLength;
-    displayBufferLength -= fieldLength;
-    *displayBuffer = ' ';
-    displayBuffer++;
-    displayBufferLength--;
-
-    const char cpu[] = "CPU ";
-    os_memmove(displayBuffer, cpu, strlen(cpu));
-    displayBuffer += strlen(cpu);
-    displayBufferLength -= strlen(cpu);
-
-    os_memmove(&asset, buffer, sizeof(asset));
-    fieldLength = asset_to_string(&asset, displayBuffer, displayBufferLength); 
-
-    displayBuffer += fieldLength;
-    *displayBuffer = 0;
+    parseNameField(buffer, bufferLength, "from", false, displayBuffer, displayBufferLength, &read, &written);
+    buffer += read; bufferLength -= read;
+    displayBuffer += written; displayBufferLength -= written;
+    parseNameField(buffer, bufferLength, "receiver", false, displayBuffer, displayBufferLength, &read, &written);
+    buffer += read; bufferLength -= read;
+    displayBuffer += written; displayBufferLength -= written;
+    parseAssetField(buffer, bufferLength, "NET", false, displayBuffer, displayBufferLength, &read, &written);
+    buffer += read; bufferLength -= read;
+    displayBuffer += written; displayBufferLength -= written;
+    parseAssetField(buffer, bufferLength, "CPU", true, displayBuffer, displayBufferLength, &read, &written);
 }
 
 /**
- * Parse token transfer action data
+ * Parse action data
 */
 static void parseActionData(txProcessingContext_t *context) {
     uint32_t i = 0;

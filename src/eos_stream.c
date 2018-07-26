@@ -476,9 +476,7 @@ static void processActionData(txProcessingContext_t *context) {
     if (context->currentFieldPos == context->currentFieldLength) {
         context->currentActionDataBufferLength = context->currentFieldLength;
 
-        if (context->contractName == EOSIO_TOKEN &&  
-            context->contractActionName == EOSIO_TOKEN_TRANSFER
-        ) {
+        if (context->contractActionName == EOSIO_TOKEN_TRANSFER) {
             parseEosioTokenTransfer(context);           
         } else if (context->contractName == EOSIO &&
                   (context->contractActionName == EOSIO_DELEGATEBW || 

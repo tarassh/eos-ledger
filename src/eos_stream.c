@@ -176,7 +176,7 @@ static void parseEosioTokenTransfer(txProcessingContext_t *context) {
     parseAssetField(buffer, bufferLength, "", false, displayBuffer, displayBufferLength, &read, &written);
     buffer += read; bufferLength -= read;
     displayBuffer += written; displayBufferLength -= written;
-    parseStringField(buffer, bufferLength, "", true, displayBuffer, displayBufferLength, &read, &written);
+    parseStringField(buffer, bufferLength, "", false, displayBuffer, displayBufferLength, &read, &written);
 }
 
 static void parseEosioDelegateUndlegate(txProcessingContext_t *context) {
@@ -199,7 +199,7 @@ static void parseEosioDelegateUndlegate(txProcessingContext_t *context) {
     parseAssetField(buffer, bufferLength, "NET", false, displayBuffer, displayBufferLength, &read, &written);
     buffer += read; bufferLength -= read;
     displayBuffer += written; displayBufferLength -= written;
-    parseAssetField(buffer, bufferLength, "CPU", true, displayBuffer, displayBufferLength, &read, &written);
+    parseAssetField(buffer, bufferLength, "CPU", false, displayBuffer, displayBufferLength, &read, &written);
 }
 
 /**

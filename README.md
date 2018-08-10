@@ -38,7 +38,7 @@ make
 ```
 
 * connect your ledger Nano S to your computer
-* install the app on your ledger: make load
-* remove the app from the ledger: make delete
+* install the app on your ledger: `make load`
+* remove the app from the ledger: `make delete`
 
 Install instruction with slight modifications has been taken from [here](https://github.com/fix/ledger-vagrant)

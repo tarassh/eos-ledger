@@ -32,10 +32,21 @@
 #define STRING_TYPE     2
 #define PUBLIC_KEY_TYPE 3
 
+typedef struct actionArgument_t {
+    char label[14];
+    char data[128];
+} actionArgument_t;
+
 typedef struct txProcessingContent_t {
+    char activeBuffers;
     char contract[14];
     char action[14];
-    char data[512];
+    char data[128];
+    actionArgument_t arg0;
+    actionArgument_t arg1;
+    actionArgument_t arg2;
+    actionArgument_t arg3;
+    actionArgument_t arg4;
 } txProcessingContent_t;
 
 typedef enum txProcessingState_e {

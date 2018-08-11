@@ -153,10 +153,12 @@ bool tlvTryDecode(uint8_t *buffer, uint32_t bufferLength, uint32_t *fieldLenght,
             return false;
         }
         
-        if (count > bufferLength) {
+        if (count >= bufferLength) {
             *valid = true;
             return false;
         }
+        buffer++;
+        bufferLength--;
         
         length = 0;
         for (i = 0; i < count; ++i) {

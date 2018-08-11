@@ -59,7 +59,7 @@ DEFINES   += APPVERSION=\"$(APPVERSION)\"
 
 DEFINES   += CX_COMPLIANCE_141
 
-# DEFINES   += DEBUG_APP
+DEFINES   += DEBUG_APP
 
 ##############
 #  Compiler  #

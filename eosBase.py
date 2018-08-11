@@ -101,6 +101,68 @@ class Transaction:
         return data
 
     @staticmethod
+    def parse_transfer(data):
+        parameters = Transaction.name_to_number(data['from'])
+        parameters += Transaction.name_to_number(data['to'])
+        parameters += Transaction.asset_to_number(data['quantity'])
+        memo = data['memo']
+        parameters += struct.pack('B', len(memo))
+        if len(memo) > 0:
+            parameters += struct.pack(str(len(memo)) + 's', str(data['memo']))
+
+        return parameters
+
+    @staticmethod
+    def pack_fc_uint(value):
+        out = ''
+        i = 0
+        val = value
+        while True:
+            b = val & 0x7f
+            val >>= 7
+            b |= ((val > 0) << 7)
+            i += 1
+            out += chr(b)
+
+            if val == 0:
+                break
+
+        Transaction.unpack_fc_uint(out)
+
+        return out
+
+    @staticmethod
+    def unpack_fc_uint(buffer):
+        i = 0
+        v = 0
+        b = 0
+        by = 0
+
+        k = 0
+        while True:
+            b = ord(buffer[k])
+            k += 1
+            i += 1
+            v |= (b & 0x7f) << by
+            by += 7
+
+            if (b & 0x80) == 0 or by >= 32:
+                break
+
+        return v
+
+    @staticmethod
+    def parse_vote_producer(data):
+        parameters = Transaction.name_to_number(data['account'])
+        parameters += Transaction.name_to_number(data['proxy'])
+        length = len(data['producers'])
+        parameters += struct.pack('B', length)
+        for producer in data['producers']:
+            parameters += Transaction.name_to_number(producer)
+
+        return parameters
+
+    @staticmethod
     def parse(json):
         tx = Transaction()
         tx.json = json
@@ -130,15 +192,13 @@ class Transaction:
             tx.auth.append((Transaction.name_to_number(auth['actor']), Transaction.name_to_number(auth['permission'])))
 
         data = action['data']
-        parameters = Transaction.name_to_number(data['from'])
-        parameters += Transaction.name_to_number(data['to'])
-        parameters += Transaction.asset_to_number(data['quantity'])
-        memo = data['memo']
-        parameters += struct.pack('B', len(memo))
-        if len(memo) > 0:
-            parameters += struct.pack(str(len(memo)) + 's', str(data['memo']))
+        if action['name'] == 'transfer':
+            parameters = Transaction.parse_transfer(data)
+        elif action['name'] == 'voteproducer':
+            parameters = Transaction.parse_vote_producer(data)
 
-        tx.data_size = struct.pack('B', len(parameters))
+        # tx.data_size = struct.pack('B', len(parameters))
+        tx.data_size = Transaction.pack_fc_uint(len(parameters))
         tx.data = parameters
         tx.tx_ext = struct.pack('B', len(body['transaction_extensions']))
         tx.cfd = binascii.unhexlify('00' * 32)

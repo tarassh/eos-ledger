@@ -163,6 +163,13 @@ class Transaction:
         return parameters
 
     @staticmethod
+    def parse_buy_ram(data):
+        parameters = Transaction.name_to_number(data['buyer'])
+        parameters += Transaction.name_to_number(data['receiver'])
+        parameters += Transaction.asset_to_number(data['tokens'])
+        return parameters
+
+    @staticmethod
     def parse(json):
         tx = Transaction()
         tx.json = json
@@ -196,6 +203,8 @@ class Transaction:
             parameters = Transaction.parse_transfer(data)
         elif action['name'] == 'voteproducer':
             parameters = Transaction.parse_vote_producer(data)
+        elif action['name'] == 'buyram':
+            parameters = Transaction.parse_buy_ram(data)
 
         # tx.data_size = struct.pack('B', len(parameters))
         tx.data_size = Transaction.pack_fc_uint(len(parameters))

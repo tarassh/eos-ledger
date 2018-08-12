@@ -29,6 +29,7 @@
 #define EOSIO_DELEGATEBW     0x4AA2A61B2A3F0000
 #define EOSIO_UNDELEGATEBW   0xD4D2A8A986CA8FC0
 #define EOSIO_VOTEPRODUCER   0xDD32AADE89D21570
+#define EOSIO_BUYRAM         0x3EBD734800000000
 
 
 void initTxContext(txProcessingContext_t *context, 
@@ -219,6 +220,24 @@ static void parseEosioDelegateUndlegate2(txProcessingContext_t *context) {
     parseAssetField2(buffer, bufferLength, "CPU", &context->content->arg3, &read, &written);
 
     context->content->activeBuffers = 4;
+}
+
+static void parseEosioBuyRam(txProcessingContext_t *context) {
+    uint32_t bufferLength = context->currentActionDataBufferLength;
+    uint8_t *buffer = context->actionDataBuffer;
+
+    uint32_t read = 0;
+    uint32_t written = 0;
+
+    parseNameField2(buffer, bufferLength, "Buyer", &context->content->arg0, &read, &written);
+    buffer += read; bufferLength -= read;
+
+    parseNameField2(buffer, bufferLength, "Receiver", &context->content->arg1, &read, &written);
+    buffer += read; bufferLength -= read;
+
+    parseAssetField2(buffer, bufferLength, "Tokens", &context->content->arg2, &read, &written);
+
+    context->content->activeBuffers = 3;
 }
 
 static void parseEosioVoteProducer(txProcessingContext_t *context) {
@@ -576,16 +595,17 @@ static void processActionData(txProcessingContext_t *context) {
         context->currentActionDataBufferLength = context->currentFieldLength;
 
         if (context->contractActionName == EOSIO_TOKEN_TRANSFER) {
-//            parseEosioTokenTransfer(context);
             parseEosioTokenTransfer2(context);
         } else if (context->contractName == EOSIO &&
                   (context->contractActionName == EOSIO_DELEGATEBW || 
                    context->contractActionName == EOSIO_UNDELEGATEBW)) {
-            // parseEosioDelegateUndlegate(context);
             parseEosioDelegateUndlegate2(context);
         } else if (context->contractName == EOSIO && 
                    context->contractActionName == EOSIO_VOTEPRODUCER) {
             parseEosioVoteProducer(context);
+        } else if (context->contractName == EOSIO && 
+                   context->contractActionName == EOSIO_BUYRAM) {
+            parseEosioBuyRam(context);
         } else {
             THROW(EXCEPTION);
         }

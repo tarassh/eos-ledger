@@ -30,6 +30,7 @@
 #define EOSIO_UNDELEGATEBW   0xD4D2A8A986CA8FC0
 #define EOSIO_VOTEPRODUCER   0xDD32AADE89D21570
 #define EOSIO_BUYRAM         0x3EBD734800000000
+#define EOSIO_BUYRAMBYTES    0x3EBD7348FECAB000
 
 
 void initTxContext(txProcessingContext_t *context, 
@@ -74,6 +75,29 @@ static void parseNameField2(uint8_t *in, uint32_t inLength, const char fieldName
 
     *read = sizeof(name_t);
     *written = writtenToBuff;
+}
+
+static void parseUint32Field(uint8_t *in, uint32_t inLength, const char fieldName[], actionArgument_t *arg, uint32_t *read, uint32_t *written) {
+    if (inLength < sizeof(uint32_t)) {
+        PRINTF("parseActionData Insufficient buffer\n");
+        THROW(EXCEPTION);
+    }
+    uint32_t labelLength = strlen(fieldName);
+    if (labelLength > sizeof(arg->label)) {
+        PRINTF("parseActionData Label too long\n");
+        THROW(EXCEPTION);
+    }
+    
+    os_memset(arg->label, 0, sizeof(arg->label));
+    os_memset(arg->data, 0, sizeof(arg->data));
+    
+    os_memmove(arg->label, fieldName, labelLength);
+    uint32_t value;
+    os_memmove(&value, in, sizeof(uint32_t));
+    snprintf(arg->data, sizeof(arg->data)-1, "%d", value);
+    
+    *read = sizeof(uint32_t);
+    *written = strlen(arg->data);
 }
 
 static void parseAssetField2(uint8_t *in, uint32_t inLength, const char fieldName[], actionArgument_t *arg, uint32_t *read, uint32_t *written) {
@@ -237,6 +261,24 @@ static void parseEosioBuyRam(txProcessingContext_t *context) {
 
     parseAssetField2(buffer, bufferLength, "Tokens", &context->content->arg2, &read, &written);
 
+    context->content->activeBuffers = 3;
+}
+
+static void parseEosioBuyRamBytes(txProcessingContext_t *context) {
+    uint32_t bufferLength = context->currentActionDataBufferLength;
+    uint8_t *buffer = context->actionDataBuffer;
+    
+    uint32_t read = 0;
+    uint32_t written = 0;
+    
+    parseNameField2(buffer, bufferLength, "Buyer", &context->content->arg0, &read, &written);
+    buffer += read; bufferLength -= read;
+    
+    parseNameField2(buffer, bufferLength, "Receiver", &context->content->arg1, &read, &written);
+    buffer += read; bufferLength -= read;
+    
+    parseUint32Field(buffer, bufferLength, "Bytes", &context->content->arg2, &read, &written);
+    
     context->content->activeBuffers = 3;
 }
 
@@ -606,6 +648,9 @@ static void processActionData(txProcessingContext_t *context) {
         } else if (context->contractName == EOSIO && 
                    context->contractActionName == EOSIO_BUYRAM) {
             parseEosioBuyRam(context);
+        } else if (context->contractName == EOSIO &&
+                   context->contractActionName == EOSIO_BUYRAMBYTES) {
+            parseEosioBuyRamBytes(context);
         } else {
             THROW(EXCEPTION);
         }

@@ -103,6 +103,22 @@ char* i64toa(int64_t i, char b[]) {
     return b;
 }
 
+char* ui64toa(uint64_t i, char b[]) {
+    char const digit[] = "0123456789";
+    char* p = b;
+    uint64_t shifter = i;
+    do{ //Move to where representation ends
+        ++p;
+        shifter = shifter/10;
+    }while(shifter);
+    *p = '\0';
+    do{ //Move back, inserting digits as u go
+        *--p = digit[i%10];
+        i = i/10;
+    }while(i);
+    return b;
+}
+
 /**
  * Decodes tag according to ASN1 standard.
 */

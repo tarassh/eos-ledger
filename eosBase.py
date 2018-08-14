@@ -177,6 +177,12 @@ class Transaction:
         return parameters
 
     @staticmethod
+    def parse_sell_ram(data):
+        parameters = Transaction.name_to_number(data['receiver'])
+        parameters += struct.pack('Q', data['bytes'])
+        return parameters
+
+    @staticmethod
     def parse(json):
         tx = Transaction()
         tx.json = json
@@ -214,6 +220,8 @@ class Transaction:
             parameters = Transaction.parse_buy_ram(data)
         elif action['name'] == 'buyrambytes':
             parameters = Transaction.parse_buy_rambytes(data)
+        elif action['name'] == 'sellram':
+            parameters = Transaction.parse_sell_ram(data)
 
         tx.data_size = Transaction.pack_fc_uint(len(parameters))
         tx.data = parameters

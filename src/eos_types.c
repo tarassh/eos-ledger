@@ -189,7 +189,7 @@ uint32_t public_key_to_wif(uint8_t *publicKey, uint32_t keyLength, char *out, ui
     uint8_t temp[37];
     uint32_t addressLen = 0;
     // is even?
-    temp[0] = (publicKey[33] & 0x1) ? 0x02 : 0x03;
+    temp[0] = (publicKey[64] & 0x1) ? 0x03 : 0x02;
     os_memmove(temp + 1, publicKey + 1, 32);
 
     uint8_t check[20];

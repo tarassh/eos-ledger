@@ -330,15 +330,26 @@ static void parseEosioVoteProducer(txProcessingContext_t *context) {
 
     parseNameField2(buffer, bufferLength, "Account", &context->content->arg0, &read, &written);
     buffer += read; bufferLength -= read;
-    
-    // Skip proxy
-    buffer += read; bufferLength -= read;
-    
     context->content->activeBuffers = 1;
+    
+    name_t proxy = 0;
+    os_memmove(&proxy, buffer, sizeof(proxy));
+    if (proxy != 0) {
+        parseNameField2(buffer, bufferLength, "Proxy", &context->content->arg1, &read, &written);
+        context->content->activeBuffers += 1;
+    }
+    buffer += read; bufferLength -= read;
 
     uint32_t totalProducers = 0;
     read = unpack_fc_unsigned_int(buffer, bufferLength, &totalProducers);
     buffer += read; bufferLength -= read;
+    
+    if (proxy != 0 && totalProducers != 0) {
+        THROW(EXCEPTION);
+    } else if (proxy != 0) {
+        return;
+    }
+    
     uint32_t loop = totalProducers > 8 ? 8 : totalProducers;
     uint32_t pages = (totalProducers / 8) + (totalProducers % 8 > 0 ? 1 : 0);
 

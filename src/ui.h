@@ -59,3 +59,6 @@ void ui_idle(void);
 // #define OFFSET_P2 3
 // #define OFFSET_LC 4
 // #define OFFSET_CDATA 5
+
+void ui_address_display(void);
+void ui_approval_display(void);

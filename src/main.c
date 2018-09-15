@@ -23,6 +23,7 @@
 #include "string.h"
 #include "eos_utils.h"
 #include "eos_stream.h"
+#include "ui.h"
 
 #include "glyphs.h"
 
@@ -91,7 +92,7 @@ txProcessingContent_t txContent;
 volatile uint8_t dataAllowed;
 volatile char fullAddress[60];
 volatile bool dataPresent;
-volatile bool skipWarning;
+extern volatile bool skipWarning;
 
 bagl_element_t tmp_element;
 
@@ -106,7 +107,7 @@ typedef struct internalStorage_t
     uint8_t initialized;
 } internalStorage_t;
 
-WIDE internalStorage_t N_storage_real;
+extern WIDE internalStorage_t N_storage_real;
 #define N_storage (*(WIDE internalStorage_t *)PIC(&N_storage_real))
 
 const bagl_element_t *ui_menu_item_out_over(const bagl_element_t *e)
@@ -116,50 +117,50 @@ const bagl_element_t *ui_menu_item_out_over(const bagl_element_t *e)
     return e;
 }
 
-const ux_menu_entry_t menu_main[];
-const ux_menu_entry_t menu_settings[];
-const ux_menu_entry_t menu_settings_data[];
+// const ux_menu_entry_t menu_main[];
+// const ux_menu_entry_t menu_settings[];
+// const ux_menu_entry_t menu_settings_data[];
 
 #ifdef HAVE_U2F
 
-// change the setting
-void menu_settings_data_change(unsigned int enabled)
-{
-    uint8_t dataAllowed = enabled;
-    nvm_write(&N_storage.dataAllowed, (void *)&dataAllowed, sizeof(uint8_t));
-    // go back to the menu entry
-    UX_MENU_DISPLAY(0, menu_settings, NULL);
-}
+// // change the setting
+// void menu_settings_data_change(unsigned int enabled)
+// {
+//     uint8_t dataAllowed = enabled;
+//     nvm_write(&N_storage.dataAllowed, (void *)&dataAllowed, sizeof(uint8_t));
+//     // go back to the menu entry
+//     UX_MENU_DISPLAY(0, menu_settings, NULL);
+// }
 
 // show the currently activated entry
-void menu_settings_data_init(unsigned int ignored) {
-  UNUSED(ignored);
-  UX_MENU_DISPLAY(N_storage.dataAllowed?1:0, menu_settings_data, NULL);
-}
+// void menu_settings_data_init(unsigned int ignored) {
+//   UNUSED(ignored);
+//   UX_MENU_DISPLAY(N_storage.dataAllowed?1:0, menu_settings_data, NULL);
+// }
 
-const ux_menu_entry_t menu_settings_data[] = {
-    {NULL, menu_settings_data_change, 0, NULL, "No", NULL, 0, 0},
-    {NULL, menu_settings_data_change, 1, NULL, "Yes", NULL, 0, 0},
-    UX_MENU_END};
+// const ux_menu_entry_t menu_settings_data[] = {
+//     {NULL, menu_settings_data_change, 0, NULL, "No", NULL, 0, 0},
+//     {NULL, menu_settings_data_change, 1, NULL, "Yes", NULL, 0, 0},
+//     UX_MENU_END};
 
-const ux_menu_entry_t menu_settings[] = {
-    // {NULL, menu_settings_data_init, 0, NULL, "Arbitrary data", NULL, 0, 0},
-    {menu_main, NULL, 1, &C_icon_back, "Back", NULL, 61, 40},
-    UX_MENU_END};
+// const ux_menu_entry_t menu_settings[] = {
+//     // {NULL, menu_settings_data_init, 0, NULL, "Arbitrary data", NULL, 0, 0},
+//     {menu_main, NULL, 1, &C_icon_back, "Back", NULL, 61, 40},
+//     UX_MENU_END};
 #endif // HAVE_U2F
 
-const ux_menu_entry_t menu_about[] = {
-    {NULL, NULL, 0, NULL, "Version", APPVERSION, 0, 0},
-    {menu_main, NULL, 2, &C_icon_back, "Back", NULL, 61, 40},
-    UX_MENU_END};
+// const ux_menu_entry_t menu_about[] = {
+//     {NULL, NULL, 0, NULL, "Version", APPVERSION, 0, 0},
+//     {menu_main, NULL, 2, &C_icon_back, "Back", NULL, 61, 40},
+//     UX_MENU_END};
 
-const ux_menu_entry_t menu_main[] = {
-    {NULL, NULL, 0, &C_nanos_badge_eos, "Use wallet to",
-     "view accounts", 33, 12},
-    {menu_settings, NULL, 0, NULL, "Settings", NULL, 0, 0},
-    {menu_about, NULL, 0, NULL, "About", NULL, 0, 0},
-    {NULL, os_sched_exit, 0, &C_icon_dashboard, "Quit app", NULL, 50, 29},
-    UX_MENU_END};
+// const ux_menu_entry_t menu_main[] = {
+//     {NULL, NULL, 0, &C_nanos_badge_eos, "Use wallet to",
+//      "view accounts", 33, 12},
+//     {menu_settings, NULL, 0, NULL, "Settings", NULL, 0, 0},
+//     {menu_about, NULL, 0, NULL, "About", NULL, 0, 0},
+//     {NULL, os_sched_exit, 0, &C_icon_dashboard, "Quit app", NULL, 50, 29},
+//     UX_MENU_END};
 
 const bagl_element_t ui_address_nanos[] = {
     // type                               userid    x    y   w    h  str rad
@@ -499,11 +500,11 @@ unsigned int ui_approval_prepro(const bagl_element_t *element)
 unsigned int ui_approval_nanos_button(unsigned int button_mask,
                                       unsigned int button_mask_counter);
 
-void ui_idle(void)
-{
-    skipWarning = false;
-    UX_MENU_DISPLAY(0, menu_main, NULL);
-}
+// void ui_idle(void)
+// {
+//     skipWarning = false;
+//     UX_MENU_DISPLAY(0, menu_main, NULL);
+// }
 
 unsigned int io_seproxyhal_touch_exit(const bagl_element_t *e)
 {

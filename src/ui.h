@@ -30,6 +30,7 @@ void ui_idle(void);
 
 extern txProcessingContent_t txContent;
 
+void ui_settings_display(void);
 void ui_address_display(const char *address);
 void ui_approval_display(bool dataPresent);
 bool ui_needs_redisplay(void);

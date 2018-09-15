@@ -83,6 +83,12 @@ txProcessingContext_t txProcessingCtx;
 
 volatile bool dataPresent;
 
+unsigned int io_seproxyhal_touch_settings(const bagl_element_t *e)
+{
+    ui_settings_display();
+    return 0; // do not redraw the widget
+}
+
 unsigned int io_seproxyhal_touch_exit(const bagl_element_t *e)
 {
     // Go back to the dashboard

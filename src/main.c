@@ -79,7 +79,6 @@ union {
 } tmpCtx;
 
 txProcessingContext_t txProcessingCtx;
-extern txProcessingContent_t txContent;
 
 volatile bool dataPresent;
 

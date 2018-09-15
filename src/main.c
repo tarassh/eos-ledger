@@ -81,17 +81,7 @@ union {
 txProcessingContext_t txProcessingCtx;
 extern txProcessingContent_t txContent;
 
-volatile uint8_t dataAllowed;
-extern volatile char fullAddress[60];
 volatile bool dataPresent;
-extern volatile bool skipWarning;
-
-bagl_element_t tmp_element;
-
-ux_state_t ux;
-// display stepped screens
-extern unsigned int ux_step;
-unsigned int ux_step_count;
 
 typedef struct internalStorage_t
 {
@@ -101,13 +91,6 @@ typedef struct internalStorage_t
 
 extern WIDE internalStorage_t N_storage_real;
 #define N_storage (*(WIDE internalStorage_t *)PIC(&N_storage_real))
-
-const bagl_element_t *ui_menu_item_out_over(const bagl_element_t *e)
-{
-    // the selection rectangle is after the none|touchable
-    e = (const bagl_element_t *)(((unsigned int)e) + sizeof(bagl_element_t));
-    return e;
-}
 
 unsigned int io_seproxyhal_touch_exit(const bagl_element_t *e)
 {
@@ -313,12 +296,7 @@ void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t *dataBuffer,
     else
     {
         // prepare for a UI based reply
-        skipWarning = false;
-        snprintf(fullAddress, sizeof(fullAddress), "%.*s", strlen(tmpCtx.publicKeyContext.address),
-                 tmpCtx.publicKeyContext.address);
-        ux_step = 0;
-        ux_step_count = 2;
-        ui_address_display();
+        ui_address_display(tmpCtx.publicKeyContext.address);
 
         *flags |= IO_ASYNCH_REPLY;
     }
@@ -401,10 +379,7 @@ void handleSign(uint8_t p1, uint8_t p2, uint8_t *workBuffer,
     cx_hash(&sha256.header, CX_LAST, tmpCtx.transactionContext.hash, 0,
             tmpCtx.transactionContext.hash);
 
-    skipWarning = !dataPresent;
-    ux_step = 0;
-    ux_step_count = 3 + txContent.activeBuffers;
-    ui_approval_display();
+    ui_approval_display(dataPresent);
 
     *flags |= IO_ASYNCH_REPLY;
 }
@@ -595,20 +570,9 @@ unsigned char io_event(unsigned char channel)
 
     case SEPROXYHAL_TAG_TICKER_EVENT:
         UX_TICKER_EVENT(G_io_seproxyhal_spi_buffer, {
-            if (UX_ALLOWED)
+            if (UX_ALLOWED && ui_needs_redisplay())
             {
-                if (skipWarning && (ux_step == 0))
-                {
-                    ux_step++;
-                }
-
-                if (ux_step_count)
-                {
-                    // prepare next screen
-                    ux_step = (ux_step + 1) % ux_step_count;
-                    // redisplay screen
-                    UX_REDISPLAY();
-                }
+                UX_REDISPLAY();
             }
         });
         break;

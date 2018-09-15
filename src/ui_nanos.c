@@ -28,13 +28,6 @@
 
 #include "glyphs.h"
 
-unsigned int io_seproxyhal_touch_settings(const bagl_element_t *e);
-unsigned int io_seproxyhal_touch_exit(const bagl_element_t *e);
-unsigned int io_seproxyhal_touch_tx_ok(const bagl_element_t *e);
-unsigned int io_seproxyhal_touch_tx_cancel(const bagl_element_t *e);
-unsigned int io_seproxyhal_touch_address_ok(const bagl_element_t *e);
-unsigned int io_seproxyhal_touch_address_cancel(const bagl_element_t *e);
-
 // const uint8_t SECP256K1_N[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 //                                0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe,
 //                                0xba, 0xae, 0xdc, 0xe6, 0xaf, 0x48, 0xa0, 0x3b,
@@ -72,10 +65,10 @@ volatile bool skipWarning;
 
 // bagl_element_t tmp_element;
 
-// ux_state_t ux;
-// // display stepped screens
+ux_state_t ux;
+// display stepped screens
 unsigned int ux_step;
-// unsigned int ux_step_count;
+unsigned int ux_step_count;
 
 typedef struct internalStorage_t
 {
@@ -1102,10 +1095,38 @@ unsigned int ui_approval_nanos_button(unsigned int button_mask,
 //     return 0;
 // }
 
-void ui_address_display(void) {
+void ui_address_display(const char *address) {
+    ux_step = 0;
+    ux_step_count = 2;
+
+    skipWarning = false;
+    snprintf(fullAddress, sizeof(fullAddress), "%.*s", strlen(address), address);
+
     UX_DISPLAY(ui_address_nanos, ui_address_prepro);
 }
 
-void ui_approval_display(void) {
+void ui_approval_display(bool dataPresent) {
+    ux_step = 0;
+    ux_step_count = 3 + txContent.activeBuffers;
+
+    skipWarning = !dataPresent;
+
     UX_DISPLAY(ui_approval_nanos, ui_approval_prepro);
+}
+
+bool ui_needs_redisplay(void) {
+    if (skipWarning && (ux_step == 0))
+    {
+        ux_step++;
+    }
+
+    if (ux_step_count)
+    {
+        // prepare next screen
+        ux_step = (ux_step + 1) % ux_step_count;
+        // redisplay screen
+        return true;
+    }
+
+    return false;
 }

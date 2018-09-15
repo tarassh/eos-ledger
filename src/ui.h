@@ -21,7 +21,7 @@
 // #include "cx.h"
 // #include <stdbool.h>
 
-// #include "os_io_seproxyhal.h"
+#include "os_io_seproxyhal.h"
 // #include "string.h"
 // #include "eos_utils.h"
 // #include "eos_stream.h"
@@ -30,12 +30,12 @@
 
 // unsigned char G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
 
-// unsigned int io_seproxyhal_touch_settings(const bagl_element_t *e);
-// unsigned int io_seproxyhal_touch_exit(const bagl_element_t *e);
-// unsigned int io_seproxyhal_touch_tx_ok(const bagl_element_t *e);
-// unsigned int io_seproxyhal_touch_tx_cancel(const bagl_element_t *e);
-// unsigned int io_seproxyhal_touch_address_ok(const bagl_element_t *e);
-// unsigned int io_seproxyhal_touch_address_cancel(const bagl_element_t *e);
+unsigned int io_seproxyhal_touch_settings(const bagl_element_t *e);
+unsigned int io_seproxyhal_touch_exit(const bagl_element_t *e);
+unsigned int io_seproxyhal_touch_tx_ok(const bagl_element_t *e);
+unsigned int io_seproxyhal_touch_tx_cancel(const bagl_element_t *e);
+unsigned int io_seproxyhal_touch_address_ok(const bagl_element_t *e);
+unsigned int io_seproxyhal_touch_address_cancel(const bagl_element_t *e);
 void ui_idle(void);
 
 // uint32_t set_result_get_publicKey(void);
@@ -60,5 +60,6 @@ void ui_idle(void);
 // #define OFFSET_LC 4
 // #define OFFSET_CDATA 5
 
-void ui_address_display(void);
-void ui_approval_display(void);
+void ui_address_display(const char *address);
+void ui_approval_display(bool dataPresent);
+bool ui_needs_redisplay(void);

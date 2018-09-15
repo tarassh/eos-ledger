@@ -23,6 +23,7 @@
 
 #include "os_io_seproxyhal.h"
 #include "string.h"
+#include "nv_storage.h"
 
 #include "glyphs.h"
 
@@ -38,15 +39,6 @@ ux_state_t ux;
 // display stepped screens
 unsigned int ux_step;
 unsigned int ux_step_count;
-
-typedef struct internalStorage_t
-{
-    uint8_t dataAllowed;
-    uint8_t initialized;
-} internalStorage_t;
-
-WIDE internalStorage_t N_storage_real;
-#define N_storage (*(WIDE internalStorage_t *)PIC(&N_storage_real))
 
 const ux_menu_entry_t menu_main[];
 const ux_menu_entry_t menu_settings[];

@@ -26,6 +26,8 @@
 
 #include "glyphs.h"
 
+#ifdef TARGET_NANOS
+
 txProcessingContent_t txContent;
 
 volatile char fullAddress[60];
@@ -506,3 +508,5 @@ bool ui_needs_redisplay(void) {
 
     return false;
 }
+
+#endif // TARGET_NANOS

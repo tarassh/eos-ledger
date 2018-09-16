@@ -75,27 +75,24 @@ char fullAddress[MAX_ADDRESS_LEN + 1];
         "CONFIRM", 0, COLOR_CONFIRM_BUTTON_DOWN, COLOR_MAIN_BG, confirm_cb, NULL, NULL                  \
     }
 
-#define UI_ITEM_LABEL(y, text)                                                                          \
+#define UI_ITEM_LABEL(y, id, text)                                                                      \
     {                                                                                                   \
-        {BAGL_LABELINE, 0x00, 30, y, 320, 30, 0, 0, BAGL_FILL, COLOR_ITEM_LABEL, COLOR_MAIN_BG,         \
+        {BAGL_LABELINE, id << 4, 30, y, 320, 30, 0, 0, BAGL_FILL, COLOR_ITEM_LABEL, COLOR_MAIN_BG,      \
         BAGL_FONT_OPEN_SANS_SEMIBOLD_8_11PX, 0},                                                        \
         text, 0, 0, 0, NULL, NULL, NULL                                                                 \
     }
 
 #define UI_ITEM_TEXT_Y(item_y, line)    ((item_y) + 30 + (line) * 23)
 
-#define _UI_ITEM_TEXT(item_y, id, line, text)                                                           \
+#define UI_ITEM_TEXT(item_y, id, line, text)                                                           \
     {                                                                                                   \
-        {BAGL_LABELINE, id, 30, UI_ITEM_TEXT_Y(item_y, line), 260, 30, 0, 0, BAGL_FILL,                 \
+        {BAGL_LABELINE, (id << 4) | line, 30, UI_ITEM_TEXT_Y(item_y, line), 260, 30, 0, 0, BAGL_FILL,   \
             COLOR_ITEM_TEXT, COLOR_MAIN_BG, BAGL_FONT_OPEN_SANS_REGULAR_10_13PX, 0},                    \
         text, 0, 0, 0, NULL, NULL, NULL                                                                 \
     } 
 
-#define UI_ITEM_TEXT(item_y, text)                                                                      \
-    _UI_ITEM_TEXT(item_y, 0, 0, text)
-
 #define UI_ITEM_MULTILINE_TEXT(item_y, id, line)                                                        \
-    _UI_ITEM_TEXT(item_y, (id << 4) | line, line, displayLine)
+    UI_ITEM_TEXT(item_y, id, line, displayLine)
 
 #define UI_ITEM_TEXT_ID(element)   (element->component.userid >> 4)
 #define UI_ITEM_TEXT_LINE(element) (element->component.userid & 0x0f)
@@ -128,7 +125,7 @@ static const bagl_element_t const ui_address_blue[] = {
     UI_BACKGROUND,
     UI_STATUS_BAR_TEXT("Confirm Address", BAGL_FONT_OPEN_SANS_SEMIBOLD_10_13PX),
 
-    UI_ITEM_LABEL(106, "Public Key"),
+    UI_ITEM_LABEL(106, 0, "Public Key"),
     UI_ITEM_MULTILINE_TEXT(106, 1, 0),
     UI_ITEM_MULTILINE_TEXT(106, 1, 1),
     UI_ITEM_MULTILINE_TEXT(106, 1, 2),
@@ -150,20 +147,23 @@ static const bagl_element_t const ui_approval_blue[] = {
     UI_BACKGROUND,
     UI_STATUS_BAR_TEXT("Confirm Transaction", BAGL_FONT_OPEN_SANS_SEMIBOLD_10_13PX),
 
-    UI_ITEM_LABEL(106, "Contract"),
-    UI_ITEM_TEXT(106, txContent.contract),
+    UI_ITEM_LABEL(106, 0, "Contract/Action"),
+    UI_ITEM_TEXT(106, 15, 0, displayLine),
 
-    UI_ITEM_LABEL(175, "Action"),
-    UI_ITEM_TEXT(175, txContent.action),
+    UI_ITEM_LABEL(160, 1, txContent.arg0.label),
+    UI_ITEM_TEXT(160, 1, 0, txContent.arg0.data),
 
-    UI_ITEM_LABEL(244, txContent.arg0.label),
-    UI_ITEM_TEXT(244, txContent.arg0.data),
+    UI_ITEM_LABEL(214, 2, txContent.arg1.label),
+    UI_ITEM_TEXT(214, 2, 0, txContent.arg1.data),
 
-    UI_ITEM_LABEL(313, txContent.arg1.label),
-    UI_ITEM_TEXT(313, txContent.arg1.data),
+    UI_ITEM_LABEL(268, 3, txContent.arg2.label),
+    UI_ITEM_TEXT(268, 3, 0, txContent.arg2.data),
 
-    UI_ITEM_LABEL(382, txContent.arg2.label),
-    UI_ITEM_TEXT(382, txContent.arg2.data),
+    UI_ITEM_LABEL(322, 4, txContent.arg3.label),
+    UI_ITEM_TEXT(322, 4, 0, txContent.arg3.data),
+
+    UI_ITEM_LABEL(376, 5, txContent.arg4.label),
+    UI_ITEM_TEXT(376, 5, 0, txContent.arg4.data),
 
     // TODO view for more tx details - longer "data" fields, and the rest of them
 
@@ -176,8 +176,11 @@ unsigned int ui_approval_blue_button(unsigned int button_mask, unsigned int butt
 }
 
 const bagl_element_t *ui_approval_prepro(const bagl_element_t *element) {
-    ui_item_text_populate(1, element, "test12345123", 12);
-    ui_item_text_populate(2, element, "eosio.token", 11);
+    if (UI_ITEM_TEXT_ID(element) == 15) {
+        snprintf(displayLine, MAX_CHAR_PER_LINE, "%s/%s", txContent.contract, txContent.action);
+    } else if (UI_ITEM_TEXT_ID(element) > txContent.activeBuffers) {
+        return NULL;
+    }
 
     return element;
 }

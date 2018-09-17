@@ -1,6 +1,7 @@
 #include "ui.h"
 
 #include "os_io_seproxyhal.h"
+#include "glyphs.h"
 
 #define SHOW_TEST_ADDRESS false
 #define SHOW_TEST_TRANSACTION false
@@ -150,7 +151,26 @@ static void ui_item_text_populate(uint8_t item_id, const bagl_element_t *element
 static const bagl_element_t const ui_idle_blue[] = {
     UI_BACKGROUND,
     UI_STATUS_BAR_TEXT("EOS", 0, BAGL_FONT_OPEN_SANS_LIGHT_14px),
-    UI_TOP_LEFT_BUTTON(BAGL_FONT_SYMBOLS_0_SETTINGS, io_seproxyhal_touch_settings),
+    // UI_TOP_LEFT_BUTTON(BAGL_FONT_SYMBOLS_0_SETTINGS, io_seproxyhal_touch_settings),
+
+    {
+        {BAGL_ICON, 0x00, 135, 178, 50, 50, 0, 0, BAGL_FILL, 0, COLOR_MAIN_BG, 0, 0},
+        &C_blue_badge_eos, 0, 0, 0, NULL, NULL, NULL
+    },
+    {
+        {BAGL_LABELINE, 0x00, 0, 270, 320, 30, 0, 0, BAGL_FILL, 0x000000, COLOR_MAIN_BG, BAGL_FONT_OPEN_SANS_LIGHT_16_22PX|BAGL_FONT_ALIGNMENT_CENTER, 0},
+        "Open your wallet", 0, 0, 0, NULL, NULL, NULL
+    },
+    {
+        {BAGL_LABELINE, 0x00, 0, 308, 320, 30, 0, 0, BAGL_FILL, 0x000000, COLOR_MAIN_BG, BAGL_FONT_OPEN_SANS_REGULAR_10_13PX|BAGL_FONT_ALIGNMENT_CENTER, 0},
+        "Connect your Ledger Blue and open your", 0, 0, 0, NULL, NULL, NULL
+    },
+    {
+        {BAGL_LABELINE, 0x00, 0, 331, 320, 30, 0, 0, BAGL_FILL, 0x000000, COLOR_MAIN_BG, BAGL_FONT_OPEN_SANS_REGULAR_10_13PX|BAGL_FONT_ALIGNMENT_CENTER, 0},
+        "preferred wallet to view your accounts.", 0, 0, 0, NULL, NULL, NULL
+    },
+
+
     UI_EXIT_BUTTON
 };
 

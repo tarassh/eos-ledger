@@ -245,6 +245,10 @@ static const bagl_element_t *ui_approval_prepro(const bagl_element_t *element) {
     if (element->component.userid & 0xf0 == 0xf0) {
         const bagl_element_t *text_element = element + (int8_t) element->component.userid;
 
+        if (UI_ITEM_TEXT_ID(text_element) > txContent.activeBuffers) {
+            return NULL;
+        }
+
         size_t text_len = strlen(text_element->text) * FONT_ITEM_TEXT_AVG_WIDTH;
         if (text_len < text_element->component.width) {
             return NULL;

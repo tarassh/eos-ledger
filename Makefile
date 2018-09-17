@@ -30,7 +30,11 @@ APPNAME = Eos
 APP_LOAD_PARAMS += --appFlags 0x40 --path "44'/194'" --curve secp256k1 $(COMMON_LOAD_PARAMS) 
 
 #prepare hsm generation
+ifeq ($(TARGET_NAME),TARGET_BLUE)
+ICONNAME=blue_app_eos.gif
+else
 ICONNAME=nanos_app_eos.gif
+endif
 
 ################
 # Default rule #

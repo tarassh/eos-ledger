@@ -32,7 +32,7 @@
 #define EOSIO_BUYRAM         0x3EBD734800000000
 #define EOSIO_BUYRAMBYTES    0x3EBD7348FECAB000
 #define EOSIO_SELLRAM        0xC2A31B9A40000000
-
+#define EOSIO_UPDATE_AUTH    0xD5526CA8DACB4000
 
 void initTxContext(txProcessingContext_t *context, 
                    cx_sha256_t *sha256, 
@@ -412,6 +412,27 @@ static void parseEosioVoteProducer(txProcessingContext_t *context) {
     }
 }
 
+static void parseEosioUpdateAuth(txProcessingContext_t *context) {
+    uint32_t bufferLength = context->currentActionDataBufferLength;
+    uint8_t *buffer = context->actionDataBuffer;
+    
+    uint32_t read = 0;
+    uint32_t written = 0;
+    
+    parseNameField2(buffer, bufferLength, "Account", &context->content->arg0, &read, &written);
+    buffer += read; bufferLength -= read;
+    
+    parseNameField2(buffer, bufferLength, "Permission", &context->content->arg1, &read, &written);
+    buffer += read; bufferLength -= read;
+
+    parseNameField2(buffer, bufferLength, "Parent", &context->content->arg2, &read, &written);
+    buffer += read; bufferLength -= read;
+    
+    context->content->activeBuffers = 3;
+
+    // TODO: PARSE AUTH arguments
+}
+
 /**
  * Sequentially hash an incoming data.
  * Hash functionality is moved out here in order to reduce 
@@ -704,6 +725,9 @@ static void processActionData(txProcessingContext_t *context) {
         } else if (context->contractName == EOSIO &&
                    context->contractActionName == EOSIO_SELLRAM) {
             parseEosioSellRam(context);
+        } else if (context->contractName == EOSIO &&
+                   context->contractActionName == EOSIO_UPDATE_AUTH) {
+            parseEosioUpdateAuth(context);
         } else {
             THROW(EXCEPTION);
         }

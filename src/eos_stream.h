@@ -41,12 +41,12 @@ typedef struct txProcessingContent_t {
     char activeBuffers;
     char contract[14];
     char action[14];
-    char data[128];
     actionArgument_t arg0;
     actionArgument_t arg1;
     actionArgument_t arg2;
     actionArgument_t arg3;
     actionArgument_t arg4;
+    actionArgument_t arg5;
 } txProcessingContent_t;
 
 typedef enum txProcessingState_e {

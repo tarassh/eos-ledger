@@ -78,6 +78,50 @@ static void parseNameField2(uint8_t *in, uint32_t inLength, const char fieldName
     *written = writtenToBuff;
 }
 
+static void parsePublicKeyField(uint8_t *in, uint32_t inLength, const char fieldName[], actionArgument_t *arg, uint32_t *read, uint32_t *written) {
+    if (inLength < 33) {
+        PRINTF("parseActionData Insufficient buffer\n");
+        THROW(EXCEPTION);
+    }
+    uint32_t labelLength = strlen(fieldName);
+    if (labelLength > sizeof(arg->label)) {
+        PRINTF("parseActionData Label too long\n");
+        THROW(EXCEPTION);
+    }
+
+    os_memset(arg->label, 0, sizeof(arg->label));
+    os_memset(arg->data, 0, sizeof(arg->data));
+
+    os_memmove(arg->label, fieldName, labelLength);
+    uint32_t writtenToBuff = public_key_to_wif(in, 33, arg->data, sizeof(arg->data)-1);
+
+    *read = 33;
+    *written = writtenToBuff;
+}
+
+static void parseUint16Field(uint8_t *in, uint32_t inLength, const char fieldName[], actionArgument_t *arg, uint32_t *read, uint32_t *written) {
+    if (inLength < sizeof(uint32_t)) {
+        PRINTF("parseActionData Insufficient buffer\n");
+        THROW(EXCEPTION);
+    }
+    uint32_t labelLength = strlen(fieldName);
+    if (labelLength > sizeof(arg->label)) {
+        PRINTF("parseActionData Label too long\n");
+        THROW(EXCEPTION);
+    }
+    
+    os_memset(arg->label, 0, sizeof(arg->label));
+    os_memset(arg->data, 0, sizeof(arg->data));
+    
+    os_memmove(arg->label, fieldName, labelLength);
+    uint16_t value;
+    os_memmove(&value, in, sizeof(uint16_t));
+    snprintf(arg->data, sizeof(arg->data)-1, "%d", value);
+    
+    *read = sizeof(uint16_t);
+    *written = strlen(arg->data);
+}
+
 static void parseUint32Field(uint8_t *in, uint32_t inLength, const char fieldName[], actionArgument_t *arg, uint32_t *read, uint32_t *written) {
     if (inLength < sizeof(uint32_t)) {
         PRINTF("parseActionData Insufficient buffer\n");
@@ -421,16 +465,65 @@ static void parseEosioUpdateAuth(txProcessingContext_t *context) {
     
     parseNameField2(buffer, bufferLength, "Account", &context->content->arg0, &read, &written);
     buffer += read; bufferLength -= read;
+    context->content->activeBuffers = 1;
     
     parseNameField2(buffer, bufferLength, "Permission", &context->content->arg1, &read, &written);
     buffer += read; bufferLength -= read;
+    context->content->activeBuffers += 1;
 
-    parseNameField2(buffer, bufferLength, "Parent", &context->content->arg2, &read, &written);
+    name_t parent = 0;
+    os_memmove(&parent, buffer, sizeof(parent));
+    if (parent != 0) {
+        parseNameField2(buffer, bufferLength, "Parent", &context->content->arg2, &read, &written);
+    } else {
+        parseStringField2("", 0, "Parent", &context->content->arg2, &read, &written);
+        appendStringArgument("None", &context->content->arg2, &read, &written);
+        read = sizeof(parent);
+    }
     buffer += read; bufferLength -= read;
-    
-    context->content->activeBuffers = 3;
+    context->content->activeBuffers += 1;
 
-    // TODO: PARSE AUTH arguments
+    // Auth argumets
+    uint32_t keyNumber = 0;
+    read = unpack_fc_unsigned_int(buffer, bufferLength, &keyNumber);
+    buffer += read; bufferLength -= read;
+
+    if (keyNumber > 1) {
+        PRINTF("Not enough place to display more than 1 Public Key");
+        THROW(EXCEPTION);
+    }
+
+    for (uint32_t i = 0; i < keyNumber; ++i) {
+        uint32_t curveType = 0;
+        read = unpack_fc_unsigned_int(buffer, bufferLength, &curveType);
+        buffer += read; bufferLength -= read;
+
+        parsePublicKeyField(buffer, bufferLength, "Public Key", &context->content->arg3, &read, &written);
+        buffer += read; bufferLength -= read;
+        context->content->activeBuffers += 1;
+
+        parseUint16Field(buffer, bufferLength, "Key Weight", &context->content->arg4, &read, &written);
+        buffer += read; bufferLength -= read;
+        context->content->activeBuffers += 1;
+    }
+
+    uint32_t accoutNumber = 0;
+    read = unpack_fc_unsigned_int(buffer, bufferLength, &accoutNumber);
+    buffer += read; bufferLength -= read;
+
+    if (accoutNumber != 0) {
+        PRINTF("Right now we are supporting keys only");
+        THROW(EXCEPTION);
+    }
+
+    uint32_t waitNumber = 0;
+    read = unpack_fc_unsigned_int(buffer, bufferLength, &waitNumber);
+    buffer += read; bufferLength -= read;
+
+    if (waitNumber != 0) {
+        PRINTF("Right now we are supporting keys only");
+        THROW(EXCEPTION);
+    }
 }
 
 /**

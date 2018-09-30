@@ -475,7 +475,7 @@ static void parseEosioUpdateAuth(txProcessingContext_t *context) {
     appendStringArgument("@", &context->content->arg0, &read, &written);
     appendNameToArgument(buffer, bufferLength, &context->content->arg0, &read, &written);
     buffer += read; bufferLength -= read;
-    context->content->activeBuffers += 1;
+    context->content->activeBuffers = 1;
 
     name_t parent = 0;
     os_memmove(&parent, buffer, sizeof(parent));

@@ -22,6 +22,7 @@ from asn1 import Encoder, Numbers
 from datetime import datetime
 import struct
 import binascii
+from base58 import b58decode 
 
 
 class Transaction:
@@ -183,6 +184,37 @@ class Transaction:
         return parameters
 
     @staticmethod
+    def parse_public_key(data):
+        data = str(data[3:])
+        decoded = b58decode(data)
+        decoded = decoded[:-4]
+        parameters = struct.pack('B', 0)
+        parameters += decoded
+        return parameters
+
+    @staticmethod
+    def parse_auth(data):
+        parameters = struct.pack('L', data['threshold'])
+        key_number = len(data['keys'])
+        parameters += struct.pack('B', key_number)
+        for key in data['keys']:
+            parameters += Transaction.parse_public_key(key['key'])
+            parameters += struct.pack('H', key['weight'])
+        parameters += struct.pack('B', len(data['accounts']))
+        parameters += struct.pack('B', len(data['waits']))
+        return parameters
+    
+    @staticmethod
+    def parse_update_auth(data):
+        parameters = binascii.unhexlify(
+            '80a763cc1c7aa26300000000a8ed32320000000080ab26a701000000010003b6d4fb38dba56d59623c5e2be38b0cdf63f7958cd61d27b1044271bb04cb63c701000000')
+        # parameters = Transaction.name_to_number(data['account'])
+        # parameters += Transaction.name_to_number(data['permission'])
+        # parameters += Transaction.name_to_number(data['parent'])
+        # parameters += Transaction.parse_auth(data['auth'])
+        return parameters
+
+    @staticmethod
     def parse(json):
         tx = Transaction()
         tx.json = json
@@ -222,6 +254,8 @@ class Transaction:
             parameters = Transaction.parse_buy_rambytes(data)
         elif action['name'] == 'sellram':
             parameters = Transaction.parse_sell_ram(data)
+        elif action['name'] == 'updateauth':
+            parameters = Transaction.parse_update_auth(data)
 
         tx.data_size = Transaction.pack_fc_uint(len(parameters))
         tx.data = parameters

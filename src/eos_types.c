@@ -208,3 +208,33 @@ uint32_t public_key_to_wif(uint8_t *publicKey, uint32_t keyLength, char *out, ui
     }
     return addressLen;    
 }
+
+uint32_t compressed_public_key_to_wif(uint8_t *publicKey, uint32_t keyLength, char *out, uint32_t outLength) {
+    if (keyLength != 33) {
+        THROW(INVALID_PARAMETER);
+    }
+    if (outLength < 40) {
+        THROW(EXCEPTION_OVERFLOW);
+    }
+    
+    uint8_t temp[37];
+    uint32_t addressLen = 0;
+    os_memset(temp, 0, sizeof(temp));
+    os_memmove(temp, publicKey, 33);
+    
+    uint8_t check[20];
+    cx_ripemd160_t riprip;
+    cx_ripemd160_init(&riprip);
+    cx_hash(&riprip.header, CX_LAST, temp, 33, check);
+    os_memmove(temp + 33, check, 4);
+    
+    os_memset(out, 0, outLength);
+    out[0] = 'E';
+    out[1] = 'O';
+    out[2] = 'S';
+    addressLen = buffer_to_encoded_base58(temp, sizeof(temp), out + 3, outLength - 3);
+    if (addressLen + 3 >= outLength) {
+        THROW(EXCEPTION_OVERFLOW);
+    }
+    return addressLen;
+}

@@ -93,7 +93,7 @@ static void parsePublicKeyField(uint8_t *in, uint32_t inLength, const char field
     os_memset(arg->data, 0, sizeof(arg->data));
 
     os_memmove(arg->label, fieldName, labelLength);
-    uint32_t writtenToBuff = public_key_to_wif(in, 33, arg->data, sizeof(arg->data)-1);
+    uint32_t writtenToBuff = compressed_public_key_to_wif(in, 33, arg->data, sizeof(arg->data)-1);
 
     *read = 33;
     *written = writtenToBuff;
@@ -463,27 +463,40 @@ static void parseEosioUpdateAuth(txProcessingContext_t *context) {
     uint32_t read = 0;
     uint32_t written = 0;
     
-    parseNameField2(buffer, bufferLength, "Account", &context->content->arg0, &read, &written);
-    buffer += read; bufferLength -= read;
-    context->content->activeBuffers = 1;
+    // account@active
+    char account[14];
+    os_memset(account, 0, sizeof(account));
     
-    parseNameField2(buffer, bufferLength, "Permission", &context->content->arg1, &read, &written);
+    parseNameField2(buffer, bufferLength, "Permission", &context->content->arg0, &read, &written);
+    buffer += read; bufferLength -= read;
+    
+    strcpy(account, context->content->arg0.data);
+    
+    appendStringArgument("@", &context->content->arg0, &read, &written);
+    appendNameToArgument(buffer, bufferLength, &context->content->arg0, &read, &written);
     buffer += read; bufferLength -= read;
     context->content->activeBuffers += 1;
 
     name_t parent = 0;
     os_memmove(&parent, buffer, sizeof(parent));
     if (parent != 0) {
-        parseNameField2(buffer, bufferLength, "Parent", &context->content->arg2, &read, &written);
+        parseStringField2("", 0, "Parent", &context->content->arg1, &read, &written);
+        appendStringArgument(account, &context->content->arg1, &read, &written);
+        appendStringArgument("@", &context->content->arg1, &read, &written);
+        appendNameToArgument(buffer, bufferLength, &context->content->arg1, &read, &written);
     } else {
-        parseStringField2("", 0, "Parent", &context->content->arg2, &read, &written);
-        appendStringArgument("None", &context->content->arg2, &read, &written);
+        parseStringField2("", 0, "Parent", &context->content->arg1, &read, &written);
+        appendStringArgument("None", &context->content->arg1, &read, &written);
         read = sizeof(parent);
     }
     buffer += read; bufferLength -= read;
     context->content->activeBuffers += 1;
 
     // Auth argumets
+    parseUint32Field(buffer, bufferLength, "Threshold", &context->content->arg2, &read, &written);
+    buffer += read; bufferLength -= read;
+    context->content->activeBuffers += 1;
+    
     uint32_t keyNumber = 0;
     read = unpack_fc_unsigned_int(buffer, bufferLength, &keyNumber);
     buffer += read; bufferLength -= read;

@@ -268,6 +268,64 @@ static void appendStringArgument(char *in, actionArgument_t *arg, uint32_t *read
     *written = inLength;
 }
 
+static void appendUint16Argument(uint8_t *in, uint32_t inLength, actionArgument_t *arg, uint32_t *read, uint32_t *written) {
+    if (inLength < sizeof(uint16_t)) {
+        PRINTF("parseActionData Insufficient buffer\n");
+        THROW(EXCEPTION);
+    }
+
+    uint32_t dataLength = strlen(arg->data);
+    uint32_t bytesLeft = sizeof(arg->data) - 1 - dataLength;
+    if (bytesLeft == 0) {
+        PRINTF("parseActionData Insufficient buffer\n");
+        THROW(EXCEPTION);
+    }
+
+    char value_str[8];
+    uint16_t value;
+    os_memmove(&value, in, sizeof(uint16_t));
+    snprintf(value_str, sizeof(value_str)-1, "%d", value);
+
+    uint32_t vLength = strlen(value_str);
+    if (vLength > bytesLeft) {
+        PRINTF("parseActionData Insufficient buffer\n");
+        THROW(EXCEPTION);
+    }
+    os_memmove(arg->data + dataLength, value_str, vLength);
+    
+    *read = sizeof(uint16_t);
+    *written = strlen(arg->data);
+}
+
+static void appendUint32Argument(uint8_t *in, uint32_t inLength, actionArgument_t *arg, uint32_t *read, uint32_t *written) {
+    if (inLength < sizeof(uint32_t)) {
+        PRINTF("parseActionData Insufficient buffer\n");
+        THROW(EXCEPTION);
+    }
+
+    uint32_t dataLength = strlen(arg->data);
+    uint32_t bytesLeft = sizeof(arg->data) - 1 - dataLength;
+    if (bytesLeft == 0) {
+        PRINTF("parseActionData Insufficient buffer\n");
+        THROW(EXCEPTION);
+    }
+
+    char value_str[11];
+    uint32_t value;
+    os_memmove(&value, in, sizeof(uint32_t));
+    snprintf(value_str, sizeof(value_str)-1, "%d", value);
+
+    uint32_t vLength = strlen(value_str);
+    if (vLength > bytesLeft) {
+        PRINTF("parseActionData Insufficient buffer\n");
+        THROW(EXCEPTION);
+    }
+    os_memmove(arg->data + dataLength, value_str, vLength);
+    
+    *read = sizeof(uint32_t);
+    *written = strlen(arg->data);
+}
+
 /**
  * Parse eosio.token transfer action
 */
@@ -513,10 +571,12 @@ static void parseEosioUpdateAuth(txProcessingContext_t *context) {
 
         parsePublicKeyField(buffer, bufferLength, "Public Key", &context->content->arg3, &read, &written);
         buffer += read; bufferLength -= read;
-        context->content->activeBuffers += 1;
-
-        parseUint16Field(buffer, bufferLength, "Key Weight", &context->content->arg4, &read, &written);
+        
+        appendStringArgument(" : ", &context->content->arg3, &read, &written);
+        appendUint16Argument(buffer, bufferLength, &context->content->arg3, &read, &written);
         buffer += read; bufferLength -= read;
+
+        // CAUTION: if KEY NUMBER WILL BE BIGGER -> OVERFLOW
         context->content->activeBuffers += 1;
     }
 
@@ -524,18 +584,47 @@ static void parseEosioUpdateAuth(txProcessingContext_t *context) {
     read = unpack_fc_unsigned_int(buffer, bufferLength, &accoutNumber);
     buffer += read; bufferLength -= read;
 
-    if (accoutNumber != 0) {
-        PRINTF("Right now we are supporting keys only");
+    if (accoutNumber > 1) {
+        PRINTF("Right now we are supporting one account");
         THROW(EXCEPTION);
+    }
+
+    for (uint32_t i = 0; i < accoutNumber; ++i) {
+        parseNameField2(buffer, bufferLength, "Account", &context->content->arg4, &read, &written);
+        buffer += read; bufferLength -= read;
+
+        appendStringArgument("@", &context->content->arg4, &read, &written);
+        appendNameToArgument(buffer, bufferLength, &context->content->arg4, &read, &written);
+        buffer += read; bufferLength -= read;
+
+        appendStringArgument(" : ", &context->content->arg4, &read, &written);
+        appendUint16Argument(buffer, bufferLength, &context->content->arg4, &read, &written);
+        buffer += read; bufferLength -= read;
+
+        // CAUTION: if KEY NUMBER WILL BE BIGGER -> OVERFLOW
+        context->content->activeBuffers += 1;
     }
 
     uint32_t waitNumber = 0;
     read = unpack_fc_unsigned_int(buffer, bufferLength, &waitNumber);
     buffer += read; bufferLength -= read;
 
-    if (waitNumber != 0) {
-        PRINTF("Right now we are supporting keys only");
+    if (waitNumber > 1) {
+        PRINTF("Right now we are supporting one wait option");
         THROW(EXCEPTION);
+    }
+
+    for (uint32_t i = 0; i < waitNumber; ++i) {
+        parseUint32Field(buffer, bufferLength, "Waits", &context->content->arg5, &read, &written);
+        buffer += read; bufferLength -= read;
+
+        appendStringArgument(" : ", &context->content->arg5, &read, &written);
+        appendUint16Argument(buffer, bufferLength, &context->content->arg5, &read, written);
+
+        buffer += read; bufferLength -= read;
+
+        // CAUTION: if KEY NUMBER WILL BE BIGGER -> OVERFLOW
+        context->content->activeBuffers += 1;
     }
 }
 

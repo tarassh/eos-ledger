@@ -128,8 +128,6 @@ class Transaction:
             if val == 0:
                 break
 
-        Transaction.unpack_fc_uint(out)
-
         return out
 
     @staticmethod

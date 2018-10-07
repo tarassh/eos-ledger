@@ -34,6 +34,8 @@
 #define EOSIO_SELLRAM        0xC2A31B9A40000000
 #define EOSIO_UPDATE_AUTH    0xD5526CA8DACB4000
 #define EOSIO_DELETE_AUTH    0x4AA2ACA8DACB4000
+#define EOSIO_LINK_AUTH      0x8BA7036B2D000000
+#define EOSIO_UNLIK_AUTH     0xD4E2E9C0DACB4000
 
 void initTxContext(txProcessingContext_t *context, 
                    cx_sha256_t *sha256, 
@@ -645,6 +647,47 @@ static void parseEosioDeleteAuth(txProcessingContext_t *context) {
     context->content->activeBuffers = 2;
 }
 
+static void parseEosioLinkAuth(txProcessingContext_t *context) {
+    uint32_t bufferLength = context->currentActionDataBufferLength;
+    uint8_t *buffer = context->actionDataBuffer;
+    
+    uint32_t read = 0;
+    uint32_t written = 0;
+
+    parseNameField2(buffer, bufferLength, "Account", &context->content->arg0, &read, &written);
+    buffer += read; bufferLength -= read;
+
+    parseNameField2(buffer, bufferLength, "Contract", &context->content->arg1, &read, &written);
+    buffer += read; bufferLength -= read;
+
+    parseNameField2(buffer, bufferLength, "Action", &context->content->arg2, &read, &written);
+    buffer += read; bufferLength -= read;
+
+    parseNameField2(buffer, bufferLength, "Permission", &context->content->arg3, &read, &written);
+    buffer += read; bufferLength -= read;
+
+    context->content->activeBuffers = 4;
+}
+
+static void parseEosioUnlinkAuth(txProcessingContext_t *context) {
+    uint32_t bufferLength = context->currentActionDataBufferLength;
+    uint8_t *buffer = context->actionDataBuffer;
+    
+    uint32_t read = 0;
+    uint32_t written = 0;
+
+    parseNameField2(buffer, bufferLength, "Account", &context->content->arg0, &read, &written);
+    buffer += read; bufferLength -= read;
+
+    parseNameField2(buffer, bufferLength, "Contract", &context->content->arg1, &read, &written);
+    buffer += read; bufferLength -= read;
+
+    parseNameField2(buffer, bufferLength, "Action", &context->content->arg2, &read, &written);
+    buffer += read; bufferLength -= read;
+
+    context->content->activeBuffers = 3;
+}
+
 /**
  * Sequentially hash an incoming data.
  * Hash functionality is moved out here in order to reduce 
@@ -943,6 +986,12 @@ static void processActionData(txProcessingContext_t *context) {
         } else if (context->contractName == EOSIO &&
                    context->contractActionName == EOSIO_DELETE_AUTH) {
             parseEosioDeleteAuth(context);
+        } else if (context->contractName == EOSIO &&
+                   context->contractActionName == EOSIO_LINK_AUTH) {
+            parseEosioLinkAuth(context);
+        } else if (context->contractName == EOSIO &&
+                   context->contractActionName == EOSIO_UNLIK_AUTH) {
+            parseEosioUnlinkAuth(context);
         } else {
             THROW(EXCEPTION);
         }

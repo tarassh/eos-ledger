@@ -211,6 +211,12 @@ class Transaction:
         return parameters
 
     @staticmethod
+    def parse_delete_auth(data):
+        parameters = Transaction.name_to_number(data['account'])
+        parameters += Transaction.name_to_number(data['permission'])
+        return parameters
+
+    @staticmethod
     def parse(json):
         tx = Transaction()
         tx.json = json
@@ -252,6 +258,8 @@ class Transaction:
             parameters = Transaction.parse_sell_ram(data)
         elif action['name'] == 'updateauth':
             parameters = Transaction.parse_update_auth(data)
+        elif action['name'] == 'deleteauth':
+            parameters = Transaction.parse_delete_auth(data)
 
         tx.data_size = Transaction.pack_fc_uint(len(parameters))
         tx.data = parameters

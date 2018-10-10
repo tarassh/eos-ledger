@@ -210,7 +210,7 @@ uint32_t public_key_to_wif(uint8_t *publicKey, uint32_t keyLength, char *out, ui
 }
 
 uint32_t compressed_public_key_to_wif(uint8_t *publicKey, uint32_t keyLength, char *out, uint32_t outLength) {
-    if (keyLength != 33) {
+    if (keyLength < 33) {
         THROW(INVALID_PARAMETER);
     }
     if (outLength < 40) {
@@ -232,9 +232,9 @@ uint32_t compressed_public_key_to_wif(uint8_t *publicKey, uint32_t keyLength, ch
     out[0] = 'E';
     out[1] = 'O';
     out[2] = 'S';
-    addressLen = buffer_to_encoded_base58(temp, sizeof(temp), out + 3, outLength - 3);
+    // addressLen = buffer_to_encoded_base58(temp, sizeof(temp), out + 3, outLength - 3);
     if (addressLen + 3 >= outLength) {
         THROW(EXCEPTION_OVERFLOW);
     }
-    return addressLen;
+    return addressLen + 3;
 }

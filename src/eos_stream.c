@@ -35,7 +35,7 @@
 #define EOSIO_UPDATE_AUTH    0xD5526CA8DACB4000
 #define EOSIO_DELETE_AUTH    0x4AA2ACA8DACB4000
 #define EOSIO_LINK_AUTH      0x8BA7036B2D000000
-#define EOSIO_UNLIK_AUTH     0xD4E2E9C0DACB4000
+#define EOSIO_UNLINK_AUTH    0xD4E2E9C0DACB4000
 
 void initTxContext(txProcessingContext_t *context, 
                    cx_sha256_t *sha256, 
@@ -96,10 +96,10 @@ static void parsePublicKeyField(uint8_t *in, uint32_t inLength, const char field
     os_memset(arg->data, 0, sizeof(arg->data));
 
     os_memmove(arg->label, fieldName, labelLength);
-    uint32_t writtenToBuff = compressed_public_key_to_wif(in, 33, arg->data, sizeof(arg->data)-1);
+    // uint32_t writtenToBuff = compressed_public_key_to_wif(in, 33, arg->data, sizeof(arg->data)-1);
 
     *read = 33;
-    *written = writtenToBuff;
+    // *written = writtenToBuff;
 }
 
 static void parseUint16Field(uint8_t *in, uint32_t inLength, const char fieldName[], actionArgument_t *arg, uint32_t *read, uint32_t *written) {
@@ -375,7 +375,7 @@ static void parseEosioDelegateUndlegate2(txProcessingContext_t *context) {
     context->content->activeBuffers = 4;
 }
 
-static void parseEosioBuyRam(txProcessingContext_t *context) {
+static void parseEosioBuyRam(txProcessingContext_t *context, bool bytes) {
     uint32_t bufferLength = context->currentActionDataBufferLength;
     uint8_t *buffer = context->actionDataBuffer;
 
@@ -388,26 +388,12 @@ static void parseEosioBuyRam(txProcessingContext_t *context) {
     parseNameField2(buffer, bufferLength, "Receiver", &context->content->arg1, &read, &written);
     buffer += read; bufferLength -= read;
 
-    parseAssetField2(buffer, bufferLength, "Tokens", &context->content->arg2, &read, &written);
+    if (bytes) {
+        parseUint32Field(buffer, bufferLength, "Bytes", &context->content->arg2, &read, &written);
+    } else {
+        parseAssetField2(buffer, bufferLength, "Tokens", &context->content->arg2, &read, &written);
+    }
 
-    context->content->activeBuffers = 3;
-}
-
-static void parseEosioBuyRamBytes(txProcessingContext_t *context) {
-    uint32_t bufferLength = context->currentActionDataBufferLength;
-    uint8_t *buffer = context->actionDataBuffer;
-    
-    uint32_t read = 0;
-    uint32_t written = 0;
-    
-    parseNameField2(buffer, bufferLength, "Buyer", &context->content->arg0, &read, &written);
-    buffer += read; bufferLength -= read;
-    
-    parseNameField2(buffer, bufferLength, "Receiver", &context->content->arg1, &read, &written);
-    buffer += read; bufferLength -= read;
-    
-    parseUint32Field(buffer, bufferLength, "Bytes", &context->content->arg2, &read, &written);
-    
     context->content->activeBuffers = 3;
 }
 
@@ -517,44 +503,39 @@ static void parseEosioVoteProducer(txProcessingContext_t *context) {
     }
 }
 
-static void parseEosioUpdateAuth(txProcessingContext_t *context) {
+static void parseEosioUpdateAuth(txProcessingContext_t *context, bool delete) {
     uint32_t bufferLength = context->currentActionDataBufferLength;
     uint8_t *buffer = context->actionDataBuffer;
     
     uint32_t read = 0;
     uint32_t written = 0;
-    
-    // account@active
-    char account[14];
-    os_memset(account, 0, sizeof(account));
-    
-    parseNameField2(buffer, bufferLength, "Permission", &context->content->arg0, &read, &written);
+
+    parseNameField2(buffer, bufferLength, "Account", &context->content->arg0, &read, &written);
     buffer += read; bufferLength -= read;
-    
-    strcpy(account, context->content->arg0.data);
-    
-    appendStringArgument("@", &context->content->arg0, &read, &written);
-    appendNameToArgument(buffer, bufferLength, &context->content->arg0, &read, &written);
+
+    parseNameField2(buffer, bufferLength, "Permission", &context->content->arg1, &read, &written);
     buffer += read; bufferLength -= read;
-    context->content->activeBuffers = 1;
+
+    context->content->activeBuffers = 2;   
+
+    if (delete) {
+        return;
+    } 
 
     name_t parent = 0;
     os_memmove(&parent, buffer, sizeof(parent));
     if (parent != 0) {
-        parseStringField2("", 0, "Parent", &context->content->arg1, &read, &written);
-        appendStringArgument(account, &context->content->arg1, &read, &written);
-        appendStringArgument("@", &context->content->arg1, &read, &written);
-        appendNameToArgument(buffer, bufferLength, &context->content->arg1, &read, &written);
+        parseNameField2(buffer, bufferLength, "Parent", &context->content->arg2, &read, &written);
     } else {
-        parseStringField2("", 0, "Parent", &context->content->arg1, &read, &written);
-        appendStringArgument("None", &context->content->arg1, &read, &written);
+        parseStringField2("", 0, "Parent", &context->content->arg2, &read, &written);
+        appendStringArgument("None", &context->content->arg2, &read, &written);
         read = sizeof(parent);
     }
     buffer += read; bufferLength -= read;
     context->content->activeBuffers += 1;
 
     // Auth argumets
-    parseUint32Field(buffer, bufferLength, "Threshold", &context->content->arg2, &read, &written);
+    parseUint32Field(buffer, bufferLength, "Threshold", &context->content->arg3, &read, &written);
     buffer += read; bufferLength -= read;
     context->content->activeBuffers += 1;
     
@@ -572,14 +553,15 @@ static void parseEosioUpdateAuth(txProcessingContext_t *context) {
         read = unpack_fc_unsigned_int(buffer, bufferLength, &curveType);
         buffer += read; bufferLength -= read;
 
-        parsePublicKeyField(buffer, bufferLength, "Public Key", &context->content->arg3, &read, &written);
+        parsePublicKeyField(buffer, bufferLength, "Public Key", &context->content->arg4, &read, &written);
         buffer += read; bufferLength -= read;
         
-        appendStringArgument(" : ", &context->content->arg3, &read, &written);
-        appendUint16Argument(buffer, bufferLength, &context->content->arg3, &read, &written);
+        appendStringArgument(" : ", &context->content->arg4, &read, &written);
+        appendUint16Argument(buffer, bufferLength, &context->content->arg4, &read, &written);
         buffer += read; bufferLength -= read;
+    }
 
-        // CAUTION: if KEY NUMBER WILL BE BIGGER -> OVERFLOW
+    if (keyNumber > 0) {
         context->content->activeBuffers += 1;
     }
 
@@ -593,18 +575,19 @@ static void parseEosioUpdateAuth(txProcessingContext_t *context) {
     }
 
     for (uint32_t i = 0; i < accoutNumber; ++i) {
-        parseNameField2(buffer, bufferLength, "Account", &context->content->arg4, &read, &written);
+        parseNameField2(buffer, bufferLength, "Account", &context->content->arg5, &read, &written);
         buffer += read; bufferLength -= read;
 
-        appendStringArgument("@", &context->content->arg4, &read, &written);
-        appendNameToArgument(buffer, bufferLength, &context->content->arg4, &read, &written);
+        appendStringArgument("@", &context->content->arg5, &read, &written);
+        appendNameToArgument(buffer, bufferLength, &context->content->arg5, &read, &written);
         buffer += read; bufferLength -= read;
 
-        appendStringArgument(" : ", &context->content->arg4, &read, &written);
-        appendUint16Argument(buffer, bufferLength, &context->content->arg4, &read, &written);
+        appendStringArgument(" : ", &context->content->arg5, &read, &written);
+        appendUint16Argument(buffer, bufferLength, &context->content->arg5, &read, &written);
         buffer += read; bufferLength -= read;
+    }
 
-        // CAUTION: if KEY NUMBER WILL BE BIGGER -> OVERFLOW
+    if (accoutNumber > 0) {
         context->content->activeBuffers += 1;
     }
 
@@ -625,51 +608,14 @@ static void parseEosioUpdateAuth(txProcessingContext_t *context) {
         appendUint16Argument(buffer, bufferLength, &context->content->arg5, &read, written);
 
         buffer += read; bufferLength -= read;
+    }
 
-        // CAUTION: if KEY NUMBER WILL BE BIGGER -> OVERFLOW
+    if (waitNumber > 0) {
         context->content->activeBuffers += 1;
     }
 }
 
-static void parseEosioDeleteAuth(txProcessingContext_t *context) {
-    uint32_t bufferLength = context->currentActionDataBufferLength;
-    uint8_t *buffer = context->actionDataBuffer;
-    
-    uint32_t read = 0;
-    uint32_t written = 0;
-
-    parseNameField2(buffer, bufferLength, "Account", &context->content->arg0, &read, &written);
-    buffer += read; bufferLength -= read;
-
-    parseNameField2(buffer, bufferLength, "Permission", &context->content->arg1, &read, &written);
-    buffer += read; bufferLength -= read;
-
-    context->content->activeBuffers = 2;
-}
-
-static void parseEosioLinkAuth(txProcessingContext_t *context) {
-    uint32_t bufferLength = context->currentActionDataBufferLength;
-    uint8_t *buffer = context->actionDataBuffer;
-    
-    uint32_t read = 0;
-    uint32_t written = 0;
-
-    parseNameField2(buffer, bufferLength, "Account", &context->content->arg0, &read, &written);
-    buffer += read; bufferLength -= read;
-
-    parseNameField2(buffer, bufferLength, "Contract", &context->content->arg1, &read, &written);
-    buffer += read; bufferLength -= read;
-
-    parseNameField2(buffer, bufferLength, "Action", &context->content->arg2, &read, &written);
-    buffer += read; bufferLength -= read;
-
-    parseNameField2(buffer, bufferLength, "Permission", &context->content->arg3, &read, &written);
-    buffer += read; bufferLength -= read;
-
-    context->content->activeBuffers = 4;
-}
-
-static void parseEosioUnlinkAuth(txProcessingContext_t *context) {
+static void parseEosioLinkAuth(txProcessingContext_t *context, bool unlink) {
     uint32_t bufferLength = context->currentActionDataBufferLength;
     uint8_t *buffer = context->actionDataBuffer;
     
@@ -686,6 +632,15 @@ static void parseEosioUnlinkAuth(txProcessingContext_t *context) {
     buffer += read; bufferLength -= read;
 
     context->content->activeBuffers = 3;
+
+    if (unlink) {
+         return;
+    }
+
+    parseNameField2(buffer, bufferLength, "Permission", &context->content->arg3, &read, &written);
+    buffer += read; bufferLength -= read;
+
+    context->content->activeBuffers = 4;
 }
 
 /**
@@ -973,25 +928,25 @@ static void processActionData(txProcessingContext_t *context) {
             parseEosioVoteProducer(context);
         } else if (context->contractName == EOSIO && 
                    context->contractActionName == EOSIO_BUYRAM) {
-            parseEosioBuyRam(context);
+            parseEosioBuyRam(context, false);
         } else if (context->contractName == EOSIO &&
                    context->contractActionName == EOSIO_BUYRAMBYTES) {
-            parseEosioBuyRamBytes(context);
+            parseEosioBuyRam(context, true);
         } else if (context->contractName == EOSIO &&
                    context->contractActionName == EOSIO_SELLRAM) {
             parseEosioSellRam(context);
         } else if (context->contractName == EOSIO &&
                    context->contractActionName == EOSIO_UPDATE_AUTH) {
-            parseEosioUpdateAuth(context);
+            parseEosioUpdateAuth(context, false);
         } else if (context->contractName == EOSIO &&
                    context->contractActionName == EOSIO_DELETE_AUTH) {
-            parseEosioDeleteAuth(context);
+            parseEosioUpdateAuth(context, true);
         } else if (context->contractName == EOSIO &&
                    context->contractActionName == EOSIO_LINK_AUTH) {
-            parseEosioLinkAuth(context);
+            parseEosioLinkAuth(context, false);
         } else if (context->contractName == EOSIO &&
-                   context->contractActionName == EOSIO_UNLIK_AUTH) {
-            parseEosioUnlinkAuth(context);
+                   context->contractActionName == EOSIO_UNLINK_AUTH) {
+            parseEosioLinkAuth(context, true);
         } else {
             THROW(EXCEPTION);
         }

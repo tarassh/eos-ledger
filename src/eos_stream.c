@@ -96,10 +96,10 @@ static void parsePublicKeyField(uint8_t *in, uint32_t inLength, const char field
     os_memset(arg->data, 0, sizeof(arg->data));
 
     os_memmove(arg->label, fieldName, labelLength);
-    // uint32_t writtenToBuff = compressed_public_key_to_wif(in, 33, arg->data, sizeof(arg->data)-1);
+    uint32_t writtenToBuff = compressed_public_key_to_wif(in, 33, arg->data, sizeof(arg->data)-1);
 
     *read = 33;
-    // *written = writtenToBuff;
+    *written = writtenToBuff;
 }
 
 static void parseUint16Field(uint8_t *in, uint32_t inLength, const char fieldName[], actionArgument_t *arg, uint32_t *read, uint32_t *written) {
@@ -595,24 +595,24 @@ static void parseEosioUpdateAuth(txProcessingContext_t *context, bool delete) {
     read = unpack_fc_unsigned_int(buffer, bufferLength, &waitNumber);
     buffer += read; bufferLength -= read;
 
-    if (waitNumber > 1) {
-        PRINTF("Right now we are supporting one wait option");
-        THROW(EXCEPTION);
-    }
+    // if (waitNumber > 1) {
+    //     PRINTF("Right now we are supporting one wait option");
+    //     THROW(EXCEPTION);
+    // }
 
-    for (uint32_t i = 0; i < waitNumber; ++i) {
-        parseUint32Field(buffer, bufferLength, "Waits", &context->content->arg5, &read, &written);
-        buffer += read; bufferLength -= read;
+    // for (uint32_t i = 0; i < waitNumber; ++i) {
+    //     parseUint32Field(buffer, bufferLength, "Waits", &context->content->arg5, &read, &written);
+    //     buffer += read; bufferLength -= read;
 
-        appendStringArgument(" : ", &context->content->arg5, &read, &written);
-        appendUint16Argument(buffer, bufferLength, &context->content->arg5, &read, written);
+    //     appendStringArgument(" : ", &context->content->arg5, &read, &written);
+    //     appendUint16Argument(buffer, bufferLength, &context->content->arg5, &read, &written);
 
-        buffer += read; bufferLength -= read;
-    }
+    //     buffer += read; bufferLength -= read;
+    // }
 
-    if (waitNumber > 0) {
-        context->content->activeBuffers += 1;
-    }
+    // if (waitNumber > 0) {
+    //     context->content->activeBuffers += 1;
+    // }
 }
 
 static void parseEosioLinkAuth(txProcessingContext_t *context, bool unlink) {

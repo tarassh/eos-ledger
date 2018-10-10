@@ -25,53 +25,52 @@ unsigned char const BASE58ALPHABET[] = {
     'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'm',
     'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'};
 
-
-unsigned char buffer_to_encoded_base58(unsigned char *in, unsigned char length,
-                         char *out,
-                         unsigned char maxoutlen) {
-    unsigned char tmp[164];
-    unsigned char buffer[164];
-    unsigned char j;
-    unsigned char startAt;
-    unsigned char zeroCount = 0;
-    if (length > sizeof(tmp)) {
-        THROW(INVALID_PARAMETER);
-    }
-    os_memmove(tmp, in, length);
-    while ((zeroCount < length) && (tmp[zeroCount] == 0)) {
-        ++zeroCount;
-    }
-    j = 2 * length;
-    startAt = zeroCount;
-    while (startAt < length) {
-        unsigned short remainder = 0;
-        unsigned char divLoop;
-        for (divLoop = startAt; divLoop < length; divLoop++) {
-            unsigned short digit256 = (unsigned short)(tmp[divLoop] & 0xff);
-            unsigned short tmpDiv = remainder * 256 + digit256;
-            tmp[divLoop] = (unsigned char)(tmpDiv / 58);
-            remainder = (tmpDiv % 58);
-        }
-        if (tmp[startAt] == 0) {
-            ++startAt;
-        }
-        buffer[--j] = (unsigned char)BASE58ALPHABET[remainder];
-    }
-    while ((j < (2 * length)) && (buffer[j] == BASE58ALPHABET[0])) {
-        ++j;
-    }
-    while (zeroCount-- > 0) {
-        buffer[--j] = BASE58ALPHABET[0];
-    }
-    length = 2 * length - j;
-    if (maxoutlen < length) {
-        THROW(EXCEPTION_OVERFLOW);
-    }
-    os_memmove(out, (buffer + j), length);
-    return length;
+bool b58enc(uint8_t *bin, uint32_t binsz, char *b58, uint32_t *b58sz)
+{
+	int carry;
+	uint32_t i, j, high, zcount = 0;
+	uint32_t size;
+	
+	while (zcount < binsz && !bin[zcount])
+		++zcount;
+	
+	size = (binsz - zcount) * 138 / 100 + 1;
+	uint8_t buf[size];
+	os_memset(buf, 0, size);
+	
+	for (i = zcount, high = size - 1; i < binsz; ++i, high = j)
+	{
+		for (carry = bin[i], j = size - 1; (j > high) || carry; --j)
+		{
+			carry += 256 * buf[j];
+			buf[j] = carry % 58;
+			carry /= 58;
+			if (!j) {
+				// Otherwise j wraps to maxint which is > high
+				break;
+			}
+		}
+	}
+	
+	for (j = 0; j < size && !buf[j]; ++j);
+	
+	if (*b58sz <= zcount + size - j)
+	{
+		*b58sz = zcount + size - j + 1;
+		return false;
+	}
+	
+	if (zcount)
+		os_memset(b58, '1', zcount);
+	for (i = zcount; j < size; ++i, ++j)
+		b58[i] = BASE58ALPHABET[buf[j]];
+	b58[i] = '\0';
+	*b58sz = i + 1;
+	
+	return true;
 }
 
-const unsigned char hex_digits[] = {'0', '1', '2', '3', '4', '5', '6', '7',
+unsigned char const hex_digits[] = {'0', '1', '2', '3', '4', '5', '6', '7',
                                     '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
 void array_hexstr(char *strbuf, const void *bin, unsigned int len) {
@@ -83,8 +82,8 @@ void array_hexstr(char *strbuf, const void *bin, unsigned int len) {
     *strbuf = 0; // EOS
 }
 
+char const digit[] = "0123456789";
 char* i64toa(int64_t i, char b[]) {
-    char const digit[] = "0123456789";
     char* p = b;
     if(i<0){
         *p++ = '-';
@@ -104,7 +103,6 @@ char* i64toa(int64_t i, char b[]) {
 }
 
 char* ui64toa(uint64_t i, char b[]) {
-    char const digit[] = "0123456789";
     char* p = b;
     uint64_t shifter = i;
     do{ //Move to where representation ends

@@ -152,20 +152,7 @@ uint8_t asset_to_string(asset_t *asset, char *out, uint32_t size) {
     return assetTextLength;
 }
 
-uint8_t pack_fc_unsigned_int(fc_unsigned_int_t value, uint8_t *out) {
-    uint8_t i = 0;
-    uint64_t val = value;
-    do {
-        uint8_t b = (uint8_t)(val & 0x7f);
-        val >>= 7;
-        b |= ((val > 0) << 7);
-        *(out + i++) = b;
-    } while (val);
-
-    return i;
-}
-
-uint32_t unpack_fc_unsigned_int(uint8_t *in, uint32_t length, fc_unsigned_int_t *value) {
+uint32_t unpack_variant32(uint8_t *in, uint32_t length, variant32_t *value) {
     uint32_t i = 0;
     uint64_t v = 0; char b = 0; uint8_t by = 0;
     do {

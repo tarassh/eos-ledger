@@ -23,15 +23,6 @@
 #include <stdbool.h>
 #include "eos_types.h"
 
-/**
- * Data processing rules
- * [type][offset]
-*/
-#define NAME_TYPE       0
-#define ASSET_TYPE      1
-#define STRING_TYPE     2
-#define PUBLIC_KEY_TYPE 3
-
 typedef struct actionArgument_t {
     char label[14];
     char data[128];

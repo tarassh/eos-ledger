@@ -102,29 +102,6 @@ static void parsePublicKeyField(uint8_t *in, uint32_t inLength, const char field
     *written = writtenToBuff;
 }
 
-static void parseUint16Field(uint8_t *in, uint32_t inLength, const char fieldName[], actionArgument_t *arg, uint32_t *read, uint32_t *written) {
-    if (inLength < sizeof(uint32_t)) {
-        PRINTF("parseActionData Insufficient buffer\n");
-        THROW(EXCEPTION);
-    }
-    uint32_t labelLength = strlen(fieldName);
-    if (labelLength > sizeof(arg->label)) {
-        PRINTF("parseActionData Label too long\n");
-        THROW(EXCEPTION);
-    }
-    
-    os_memset(arg->label, 0, sizeof(arg->label));
-    os_memset(arg->data, 0, sizeof(arg->data));
-    
-    os_memmove(arg->label, fieldName, labelLength);
-    uint16_t value;
-    os_memmove(&value, in, sizeof(uint16_t));
-    snprintf(arg->data, sizeof(arg->data)-1, "%d", value);
-    
-    *read = sizeof(uint16_t);
-    *written = strlen(arg->data);
-}
-
 static void parseUint32Field(uint8_t *in, uint32_t inLength, const char fieldName[], actionArgument_t *arg, uint32_t *read, uint32_t *written) {
     if (inLength < sizeof(uint32_t)) {
         PRINTF("parseActionData Insufficient buffer\n");
@@ -208,7 +185,7 @@ static void parseStringField2(uint8_t *in, uint32_t inLength, const char fieldNa
     os_memmove(arg->label, fieldName, labelLength);
 
     uint32_t fieldLength = 0;
-    uint32_t readFromBuffer = unpack_fc_unsigned_int(in, inLength, &fieldLength);
+    uint32_t readFromBuffer = unpack_variant32(in, inLength, &fieldLength);
     if (fieldLength > sizeof(arg->data) - 1) {
         PRINTF("parseActionData Insufficient bufferg\n");
         THROW(EXCEPTION);
@@ -297,35 +274,6 @@ static void appendUint16Argument(uint8_t *in, uint32_t inLength, actionArgument_
     os_memmove(arg->data + dataLength, value_str, vLength);
     
     *read = sizeof(uint16_t);
-    *written = strlen(arg->data);
-}
-
-static void appendUint32Argument(uint8_t *in, uint32_t inLength, actionArgument_t *arg, uint32_t *read, uint32_t *written) {
-    if (inLength < sizeof(uint32_t)) {
-        PRINTF("parseActionData Insufficient buffer\n");
-        THROW(EXCEPTION);
-    }
-
-    uint32_t dataLength = strlen(arg->data);
-    uint32_t bytesLeft = sizeof(arg->data) - 1 - dataLength;
-    if (bytesLeft == 0) {
-        PRINTF("parseActionData Insufficient buffer\n");
-        THROW(EXCEPTION);
-    }
-
-    char value_str[11];
-    uint32_t value;
-    os_memmove(&value, in, sizeof(uint32_t));
-    snprintf(value_str, sizeof(value_str)-1, "%d", value);
-
-    uint32_t vLength = strlen(value_str);
-    if (vLength > bytesLeft) {
-        PRINTF("parseActionData Insufficient buffer\n");
-        THROW(EXCEPTION);
-    }
-    os_memmove(arg->data + dataLength, value_str, vLength);
-    
-    *read = sizeof(uint32_t);
     *written = strlen(arg->data);
 }
 
@@ -432,7 +380,7 @@ static void parseEosioVoteProducer(txProcessingContext_t *context) {
     buffer += read; bufferLength -= read;
 
     uint32_t totalProducers = 0;
-    read = unpack_fc_unsigned_int(buffer, bufferLength, &totalProducers);
+    read = unpack_variant32(buffer, bufferLength, &totalProducers);
     buffer += read; bufferLength -= read;
     
     if (proxy != 0 && totalProducers != 0) {
@@ -540,7 +488,7 @@ static void parseEosioUpdateAuth(txProcessingContext_t *context, bool delete) {
     context->content->activeBuffers += 1;
     
     uint32_t keyNumber = 0;
-    read = unpack_fc_unsigned_int(buffer, bufferLength, &keyNumber);
+    read = unpack_variant32(buffer, bufferLength, &keyNumber);
     buffer += read; bufferLength -= read;
 
     if (keyNumber > 1) {
@@ -550,7 +498,7 @@ static void parseEosioUpdateAuth(txProcessingContext_t *context, bool delete) {
 
     for (uint32_t i = 0; i < keyNumber; ++i) {
         uint32_t curveType = 0;
-        read = unpack_fc_unsigned_int(buffer, bufferLength, &curveType);
+        read = unpack_variant32(buffer, bufferLength, &curveType);
         buffer += read; bufferLength -= read;
 
         parsePublicKeyField(buffer, bufferLength, "Public Key", &context->content->arg4, &read, &written);
@@ -566,7 +514,7 @@ static void parseEosioUpdateAuth(txProcessingContext_t *context, bool delete) {
     }
 
     uint32_t accoutNumber = 0;
-    read = unpack_fc_unsigned_int(buffer, bufferLength, &accoutNumber);
+    read = unpack_variant32(buffer, bufferLength, &accoutNumber);
     buffer += read; bufferLength -= read;
 
     if (accoutNumber > 1) {
@@ -592,7 +540,7 @@ static void parseEosioUpdateAuth(txProcessingContext_t *context, bool delete) {
     }
 
     uint32_t waitNumber = 0;
-    read = unpack_fc_unsigned_int(buffer, bufferLength, &waitNumber);
+    read = unpack_variant32(buffer, bufferLength, &waitNumber);
     buffer += read; bufferLength -= read;
 
     // if (waitNumber > 1) {
@@ -706,7 +654,7 @@ static void processZeroSizeField(txProcessingContext_t *context) {
 
     if (context->currentFieldPos == context->currentFieldLength) {
         uint32_t sizeValue = 0;
-        unpack_fc_unsigned_int(context->sizeBuffer, context->currentFieldPos + 1, &sizeValue);
+        unpack_variant32(context->sizeBuffer, context->currentFieldPos + 1, &sizeValue);
         if (sizeValue != 0) {
             PRINTF("processCtxFreeAction Action Number must be 0\n");
             THROW(EXCEPTION);
@@ -746,7 +694,7 @@ static void processActionListSizeField(txProcessingContext_t *context) {
 
     if (context->currentFieldPos == context->currentFieldLength) {
         uint32_t sizeValue = 0;
-        unpack_fc_unsigned_int(context->sizeBuffer, context->currentFieldPos + 1, &sizeValue);
+        unpack_variant32(context->sizeBuffer, context->currentFieldPos + 1, &sizeValue);
         if (sizeValue != 1) {
             PRINTF("processActionListSizeField Action Number must be 1\n");
             THROW(EXCEPTION);
@@ -844,7 +792,7 @@ static void processAuthorizationListSizeField(txProcessingContext_t *context) {
     }
 
     if (context->currentFieldPos == context->currentFieldLength) {
-        unpack_fc_unsigned_int(context->sizeBuffer, context->currentFieldPos + 1, &context->currentAutorizationNumber);
+        unpack_variant32(context->sizeBuffer, context->currentFieldPos + 1, &context->currentAutorizationNumber);
         context->currentAutorizationIndex = 0;
         // Reset size buffer
         os_memset(context->sizeBuffer, 0, sizeof(context->sizeBuffer));

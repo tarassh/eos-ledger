@@ -591,6 +591,27 @@ static void parseEosioLinkAuth(txProcessingContext_t *context, bool unlink) {
     context->content->activeBuffers = 4;
 }
 
+void printArgument(uint8_t argNum, txProcessingContext_t *context) {
+    uint32_t bufferLength = context->currentActionDataBufferLength;
+    uint8_t *buffer = context->actionDataBuffer;
+
+    uint32_t read = 0;
+    uint32_t written = 0;
+
+    if (argNum == 0) {
+        parseNameField2(buffer, bufferLength, "From", &context->content->arg0, &read, &written);
+    } else if (argNum == 1) {
+        buffer += sizeof(name_t); bufferLength -= sizeof(name_t);
+        parseNameField2(buffer, bufferLength, "To", &context->content->arg0, &read, &written);
+    } else if (argNum == 2) {
+        buffer += 2 * sizeof(name_t); bufferLength -= 2 * sizeof(name_t);
+        parseAssetField2(buffer, bufferLength, "Quantity", &context->content->arg0, &read, &written);
+    } else if (argNum == 3) {
+        buffer += 2 * sizeof(name_t) + sizeof(asset_t); bufferLength -= 2 * sizeof(name_t) + sizeof(asset_t);
+        parseStringField2(buffer, bufferLength, "Memo", &context->content->arg0, &read, &written);
+    }
+}
+
 /**
  * Sequentially hash an incoming data.
  * Hash functionality is moved out here in order to reduce 

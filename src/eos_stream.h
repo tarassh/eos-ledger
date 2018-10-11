@@ -92,4 +92,6 @@ typedef enum parserStatus_e {
 void initTxContext(txProcessingContext_t *context, cx_sha256_t *sha256, txProcessingContent_t *processingContent);
 parserStatus_e parseTx(txProcessingContext_t *context, uint8_t *buffer, uint32_t length);
 
+void printArgument(uint8_t argNum, txProcessingContext_t *processingContext);
+
 #endif // __EOS_STREAM_H__

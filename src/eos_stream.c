@@ -21,6 +21,7 @@
 #include "cx.h"
 #include "eos_types.h"
 #include "eos_utils.h"
+#include "eos_parse.h"
 
 #define EOSIO_TOKEN          0x5530EA033482A600
 #define EOSIO_TOKEN_TRANSFER 0xCDCD3C2D57000000
@@ -57,155 +58,6 @@ uint8_t readTxByte(txProcessingContext_t *context) {
     context->workBuffer++;
     context->commandLength--;
     return data;
-}
-
-static void parseNameField2(uint8_t *in, uint32_t inLength, const char fieldName[], actionArgument_t *arg, uint32_t *read, uint32_t *written) {
-    if (inLength < sizeof(name_t)) {
-        PRINTF("parseActionData Insufficient buffer\n");
-        THROW(EXCEPTION);
-    }
-    uint32_t labelLength = strlen(fieldName);
-    if (labelLength > sizeof(arg->label)) {
-        PRINTF("parseActionData Label too long\n");
-        THROW(EXCEPTION);
-    }
-
-    os_memset(arg->label, 0, sizeof(arg->label));
-    os_memset(arg->data, 0, sizeof(arg->data));
-    
-    os_memmove(arg->label, fieldName, labelLength);
-    name_t name = buffer_to_name_type(in, sizeof(name_t));
-    uint32_t writtenToBuff = name_to_string(name, arg->data, sizeof(arg->data)-1);
-
-    *read = sizeof(name_t);
-    *written = writtenToBuff;
-}
-
-static void parsePublicKeyField(uint8_t *in, uint32_t inLength, const char fieldName[], actionArgument_t *arg, uint32_t *read, uint32_t *written) {
-    if (inLength < 33) {
-        PRINTF("parseActionData Insufficient buffer\n");
-        THROW(EXCEPTION);
-    }
-    uint32_t labelLength = strlen(fieldName);
-    if (labelLength > sizeof(arg->label)) {
-        PRINTF("parseActionData Label too long\n");
-        THROW(EXCEPTION);
-    }
-
-    os_memset(arg->label, 0, sizeof(arg->label));
-    os_memset(arg->data, 0, sizeof(arg->data));
-
-    os_memmove(arg->label, fieldName, labelLength);
-    uint32_t writtenToBuff = compressed_public_key_to_wif(in, 33, arg->data, sizeof(arg->data)-1);
-
-    *read = 33;
-    *written = writtenToBuff;
-}
-
-static void parseUint32Field(uint8_t *in, uint32_t inLength, const char fieldName[], actionArgument_t *arg, uint32_t *read, uint32_t *written) {
-    if (inLength < sizeof(uint32_t)) {
-        PRINTF("parseActionData Insufficient buffer\n");
-        THROW(EXCEPTION);
-    }
-    uint32_t labelLength = strlen(fieldName);
-    if (labelLength > sizeof(arg->label)) {
-        PRINTF("parseActionData Label too long\n");
-        THROW(EXCEPTION);
-    }
-    
-    os_memset(arg->label, 0, sizeof(arg->label));
-    os_memset(arg->data, 0, sizeof(arg->data));
-    
-    os_memmove(arg->label, fieldName, labelLength);
-    uint32_t value;
-    os_memmove(&value, in, sizeof(uint32_t));
-    snprintf(arg->data, sizeof(arg->data)-1, "%d", value);
-    
-    *read = sizeof(uint32_t);
-    *written = strlen(arg->data);
-}
-
-static void parseUInt64Field(uint8_t *in, uint32_t inLength, const char fieldName[], actionArgument_t *arg, uint32_t *read, uint32_t *written) {
-    if (inLength < sizeof(uint64_t)) {
-        PRINTF("parseActionData Insufficient buffer\n");
-        THROW(EXCEPTION);
-    }
-    uint32_t labelLength = strlen(fieldName);
-    if (labelLength > sizeof(arg->label)) {
-        PRINTF("parseActionData Label too long\n");
-        THROW(EXCEPTION);
-    }
-    
-    os_memset(arg->label, 0, sizeof(arg->label));
-    os_memset(arg->data, 0, sizeof(arg->data));
-    
-    os_memmove(arg->label, fieldName, labelLength);
-    uint64_t value;
-    os_memmove(&value, in, sizeof(uint64_t));
-    ui64toa(value, arg->data);
-    
-    *read = sizeof(uint64_t);
-    *written = strlen(arg->data);
-}
-
-static void parseAssetField2(uint8_t *in, uint32_t inLength, const char fieldName[], actionArgument_t *arg, uint32_t *read, uint32_t *written) {
-    if (inLength < sizeof(asset_t)) {
-        PRINTF("parseActionData Insufficient buffer\n");
-        THROW(EXCEPTION);
-    }
-
-    uint32_t labelLength = strlen(fieldName);
-    if (labelLength > sizeof(arg->label)) {
-        PRINTF("parseActionData Label too long\n");
-        THROW(EXCEPTION);
-    }
-
-    os_memset(arg->label, 0, sizeof(arg->label));
-    os_memset(arg->data, 0, sizeof(arg->data));
-
-    os_memmove(arg->label, fieldName, labelLength);
-    asset_t asset;
-    os_memmove(&asset, in, sizeof(asset));
-    uint32_t writtenToBuff = asset_to_string(&asset, arg->data, sizeof(arg->data)-1); 
-
-    *read = sizeof(asset_t);
-    *written = writtenToBuff;
-}
-
-static void parseStringField2(uint8_t *in, uint32_t inLength, const char fieldName[], actionArgument_t *arg, uint32_t *read, uint32_t *written) {
-    uint32_t labelLength = strlen(fieldName);
-    if (labelLength > sizeof(arg->label)) {
-        PRINTF("parseActionData Label too long\n");
-        THROW(EXCEPTION);
-    }
-
-    os_memset(arg->label, 0, sizeof(arg->label));
-    os_memset(arg->data, 0, sizeof(arg->data));
-
-    os_memmove(arg->label, fieldName, labelLength);
-
-    uint32_t fieldLength = 0;
-    uint32_t readFromBuffer = unpack_variant32(in, inLength, &fieldLength);
-    if (fieldLength > sizeof(arg->data) - 1) {
-        PRINTF("parseActionData Insufficient bufferg\n");
-        THROW(EXCEPTION);
-    } 
-
-    if (inLength < fieldLength) {
-        PRINTF("parseActionData Insufficient buffer\n");
-        THROW(EXCEPTION);
-    }
-
-    in += readFromBuffer;
-    inLength -= readFromBuffer;
-
-    os_memmove(arg->data, in, fieldLength);
-
-    in += fieldLength;
-    inLength -= fieldLength;
-
-    *read = readFromBuffer + fieldLength;
-    *written = fieldLength;
 }
 
 static void appendNameToArgument(uint8_t *in, uint32_t inLength, actionArgument_t *arg, uint32_t *read, uint32_t *written) {
@@ -280,268 +132,272 @@ static void appendUint16Argument(uint8_t *in, uint32_t inLength, actionArgument_
 /**
  * Parse eosio.token transfer action
 */
-static void parseEosioTokenTransfer2(txProcessingContext_t *context) {
+// static void parseEosioTokenTransfer(txProcessingContext_t *context) {
 
-    uint32_t bufferLength = context->currentActionDataBufferLength;
-    uint8_t *buffer = context->actionDataBuffer;
+//     uint32_t bufferLength = context->currentActionDataBufferLength;
+//     uint8_t *buffer = context->actionDataBuffer;
 
-    uint32_t read = 0;
-    uint32_t written = 0;
+//     uint32_t read = 0;
+//     uint32_t written = 0;
 
-    parseNameField2(buffer, bufferLength, "From", &context->content->arg0, &read, &written);
-    buffer += read; bufferLength -= read;
+//     parseNameField(buffer, bufferLength, "From", &context->content->arg0, &read, &written);
+//     buffer += read; bufferLength -= read;
 
-    parseNameField2(buffer, bufferLength, "To", &context->content->arg1, &read, &written);
-    buffer += read; bufferLength -= read;
+//     parseNameField(buffer, bufferLength, "To", &context->content->arg1, &read, &written);
+//     buffer += read; bufferLength -= read;
 
-    parseAssetField2(buffer, bufferLength, "Quantity", &context->content->arg2, &read, &written);
-    buffer += read; bufferLength -= read;
+//     parseAssetField(buffer, bufferLength, "Quantity", &context->content->arg2, &read, &written);
+//     buffer += read; bufferLength -= read;
     
-    parseStringField2(buffer, bufferLength, "Memo", &context->content->arg3, &read, &written);
+//     parseStringField(buffer, bufferLength, "Memo", &context->content->arg3, &read, &written);
 
+//     context->content->activeBuffers = 4;
+// }
+
+static void processTokenTransfer(txProcessingContext_t *context) {
     context->content->activeBuffers = 4;
 }
 
-static void parseEosioDelegateUndlegate2(txProcessingContext_t *context) {
-    uint32_t bufferLength = context->currentActionDataBufferLength;
-    uint8_t *buffer = context->actionDataBuffer;
+// static void parseEosioDelegateUndlegate(txProcessingContext_t *context) {
+//     uint32_t bufferLength = context->currentActionDataBufferLength;
+//     uint8_t *buffer = context->actionDataBuffer;
 
-    uint32_t read = 0;
-    uint32_t written = 0;
+//     uint32_t read = 0;
+//     uint32_t written = 0;
 
-    parseNameField2(buffer, bufferLength, "From", &context->content->arg0, &read, &written);
-    buffer += read; bufferLength -= read;
+//     parseNameField(buffer, bufferLength, "From", &context->content->arg0, &read, &written);
+//     buffer += read; bufferLength -= read;
     
-    parseNameField2(buffer, bufferLength, "Receiver", &context->content->arg1, &read, &written);
-    buffer += read; bufferLength -= read;
+//     parseNameField(buffer, bufferLength, "Receiver", &context->content->arg1, &read, &written);
+//     buffer += read; bufferLength -= read;
     
-    parseAssetField2(buffer, bufferLength, "Network", &context->content->arg2, &read, &written);
-    buffer += read; bufferLength -= read;
+//     parseAssetField(buffer, bufferLength, "Network", &context->content->arg2, &read, &written);
+//     buffer += read; bufferLength -= read;
     
-    parseAssetField2(buffer, bufferLength, "CPU", &context->content->arg3, &read, &written);
+//     parseAssetField(buffer, bufferLength, "CPU", &context->content->arg3, &read, &written);
 
-    context->content->activeBuffers = 4;
-}
+//     context->content->activeBuffers = 4;
+// }
 
-static void parseEosioBuyRam(txProcessingContext_t *context, bool bytes) {
-    uint32_t bufferLength = context->currentActionDataBufferLength;
-    uint8_t *buffer = context->actionDataBuffer;
+// static void parseEosioBuyRam(txProcessingContext_t *context, bool bytes) {
+//     uint32_t bufferLength = context->currentActionDataBufferLength;
+//     uint8_t *buffer = context->actionDataBuffer;
 
-    uint32_t read = 0;
-    uint32_t written = 0;
+//     uint32_t read = 0;
+//     uint32_t written = 0;
 
-    parseNameField2(buffer, bufferLength, "Buyer", &context->content->arg0, &read, &written);
-    buffer += read; bufferLength -= read;
+//     parseNameField(buffer, bufferLength, "Buyer", &context->content->arg0, &read, &written);
+//     buffer += read; bufferLength -= read;
 
-    parseNameField2(buffer, bufferLength, "Receiver", &context->content->arg1, &read, &written);
-    buffer += read; bufferLength -= read;
+//     parseNameField(buffer, bufferLength, "Receiver", &context->content->arg1, &read, &written);
+//     buffer += read; bufferLength -= read;
 
-    if (bytes) {
-        parseUint32Field(buffer, bufferLength, "Bytes", &context->content->arg2, &read, &written);
-    } else {
-        parseAssetField2(buffer, bufferLength, "Tokens", &context->content->arg2, &read, &written);
-    }
+//     if (bytes) {
+//         parseUint32Field(buffer, bufferLength, "Bytes", &context->content->arg2, &read, &written);
+//     } else {
+//         parseAssetField(buffer, bufferLength, "Tokens", &context->content->arg2, &read, &written);
+//     }
 
-    context->content->activeBuffers = 3;
-}
+//     context->content->activeBuffers = 3;
+// }
 
-static void parseEosioSellRam(txProcessingContext_t *context) {
-    uint32_t bufferLength = context->currentActionDataBufferLength;
-    uint8_t *buffer = context->actionDataBuffer;
+// static void parseEosioSellRam(txProcessingContext_t *context) {
+//     uint32_t bufferLength = context->currentActionDataBufferLength;
+//     uint8_t *buffer = context->actionDataBuffer;
     
-    uint32_t read = 0;
-    uint32_t written = 0;
+//     uint32_t read = 0;
+//     uint32_t written = 0;
     
-    parseNameField2(buffer, bufferLength, "Receiver", &context->content->arg0, &read, &written);
-    buffer += read; bufferLength -= read;
+//     parseNameField(buffer, bufferLength, "Receiver", &context->content->arg0, &read, &written);
+//     buffer += read; bufferLength -= read;
     
-    parseUInt64Field(buffer, bufferLength, "Bytes", &context->content->arg1, &read, &written);
+//     parseUInt64Field(buffer, bufferLength, "Bytes", &context->content->arg1, &read, &written);
     
-    context->content->activeBuffers = 2;
-}
+//     context->content->activeBuffers = 2;
+// }
 
-static void parseEosioVoteProducer(txProcessingContext_t *context) {
-    uint32_t bufferLength = context->currentActionDataBufferLength;
-    uint8_t *buffer = context->actionDataBuffer;
+// static void parseEosioVoteProducer(txProcessingContext_t *context) {
+//     uint32_t bufferLength = context->currentActionDataBufferLength;
+//     uint8_t *buffer = context->actionDataBuffer;
 
-    uint32_t read = 0;
-    uint32_t written = 0;
+//     uint32_t read = 0;
+//     uint32_t written = 0;
 
-    parseNameField2(buffer, bufferLength, "Account", &context->content->arg0, &read, &written);
-    buffer += read; bufferLength -= read;
-    context->content->activeBuffers = 1;
+//     parseNameField(buffer, bufferLength, "Account", &context->content->arg0, &read, &written);
+//     buffer += read; bufferLength -= read;
+//     context->content->activeBuffers = 1;
     
-    name_t proxy = 0;
-    os_memmove(&proxy, buffer, sizeof(proxy));
-    if (proxy != 0) {
-        parseNameField2(buffer, bufferLength, "Proxy", &context->content->arg1, &read, &written);
-        context->content->activeBuffers += 1;
-    }
-    buffer += read; bufferLength -= read;
+//     name_t proxy = 0;
+//     os_memmove(&proxy, buffer, sizeof(proxy));
+//     if (proxy != 0) {
+//         parseNameField(buffer, bufferLength, "Proxy", &context->content->arg1, &read, &written);
+//         context->content->activeBuffers += 1;
+//     }
+//     buffer += read; bufferLength -= read;
 
-    uint32_t totalProducers = 0;
-    read = unpack_variant32(buffer, bufferLength, &totalProducers);
-    buffer += read; bufferLength -= read;
+//     uint32_t totalProducers = 0;
+//     read = unpack_variant32(buffer, bufferLength, &totalProducers);
+//     buffer += read; bufferLength -= read;
     
-    if (proxy != 0 && totalProducers != 0) {
-        THROW(EXCEPTION);
-    } else if (proxy != 0) {
-        return;
-    }
+//     if (proxy != 0 && totalProducers != 0) {
+//         THROW(EXCEPTION);
+//     } else if (proxy != 0) {
+//         return;
+//     }
     
-    uint32_t loop = totalProducers > 8 ? 8 : totalProducers;
-    uint32_t pages = (totalProducers / 8) + (totalProducers % 8 > 0 ? 1 : 0);
+//     uint32_t loop = totalProducers > 8 ? 8 : totalProducers;
+//     uint32_t pages = (totalProducers / 8) + (totalProducers % 8 > 0 ? 1 : 0);
 
-    char label[14];
-    snprintf(label, sizeof(label), "[%d] .. %d", 1, pages);
-    parseStringField2("", 0, label, &context->content->arg1, &read, &written);
+//     char label[14];
+//     snprintf(label, sizeof(label), "[%d] .. %d", 1, pages);
+//     parseStringField("", 0, label, &context->content->arg1, &read, &written);
 
-    for (uint32_t i = 0; i < loop; ++i) {
-        appendNameToArgument(buffer, bufferLength, &context->content->arg1, &read, &written);
-        buffer += read; bufferLength -= read;
-        appendStringArgument(" ", &context->content->arg1, &read, &written);
-    }
+//     for (uint32_t i = 0; i < loop; ++i) {
+//         appendNameToArgument(buffer, bufferLength, &context->content->arg1, &read, &written);
+//         buffer += read; bufferLength -= read;
+//         appendStringArgument(" ", &context->content->arg1, &read, &written);
+//     }
 
-    context->content->activeBuffers += 1;
-    uint32_t producersLeft = totalProducers - loop;
+//     context->content->activeBuffers += 1;
+//     uint32_t producersLeft = totalProducers - loop;
     
-    if (producersLeft > 0) {
-        loop = producersLeft > 8 ? 8 : producersLeft;
-        snprintf(label, sizeof(label), "1 [%d] .. %d", 2, pages);
-        parseStringField2("", 0, label, &context->content->arg2, &read, &written);
+//     if (producersLeft > 0) {
+//         loop = producersLeft > 8 ? 8 : producersLeft;
+//         snprintf(label, sizeof(label), "1 [%d] .. %d", 2, pages);
+//         parseStringField("", 0, label, &context->content->arg2, &read, &written);
         
-        for (uint32_t i = 0; i < loop; ++i) {
-            appendNameToArgument(buffer, bufferLength, &context->content->arg2, &read, &written);
-            buffer += read; bufferLength -= read;
-            appendStringArgument(" ", &context->content->arg2, &read, &written);
-        }
+//         for (uint32_t i = 0; i < loop; ++i) {
+//             appendNameToArgument(buffer, bufferLength, &context->content->arg2, &read, &written);
+//             buffer += read; bufferLength -= read;
+//             appendStringArgument(" ", &context->content->arg2, &read, &written);
+//         }
         
-        producersLeft -= loop;
-        context->content->activeBuffers += 1;
-    }
+//         producersLeft -= loop;
+//         context->content->activeBuffers += 1;
+//     }
     
-    if (producersLeft > 0) {
-        loop = producersLeft > 8 ? 8 : producersLeft;
-        snprintf(label, sizeof(label), "1 2 [%d] .. %d", 3, pages);
-        parseStringField2("", 0, label, &context->content->arg3, &read, &written);
+//     if (producersLeft > 0) {
+//         loop = producersLeft > 8 ? 8 : producersLeft;
+//         snprintf(label, sizeof(label), "1 2 [%d] .. %d", 3, pages);
+//         parseStringField("", 0, label, &context->content->arg3, &read, &written);
         
-        for (uint32_t i = 0; i < loop; ++i) {
-            appendNameToArgument(buffer, bufferLength, &context->content->arg3, &read, &written);
-            buffer += read; bufferLength -= read;
-            appendStringArgument(" ", &context->content->arg3, &read, &written);
-        }
+//         for (uint32_t i = 0; i < loop; ++i) {
+//             appendNameToArgument(buffer, bufferLength, &context->content->arg3, &read, &written);
+//             buffer += read; bufferLength -= read;
+//             appendStringArgument(" ", &context->content->arg3, &read, &written);
+//         }
         
-        producersLeft -= loop;
-        context->content->activeBuffers += 1;
-    }
+//         producersLeft -= loop;
+//         context->content->activeBuffers += 1;
+//     }
     
-    if (producersLeft > 0) {
-        loop = producersLeft > 8 ? 8 : producersLeft;
-        snprintf(label, sizeof(label), "1 2 3 [%d]", 4);
-        parseStringField2("", 0, label, &context->content->arg4, &read, &written);
+//     if (producersLeft > 0) {
+//         loop = producersLeft > 8 ? 8 : producersLeft;
+//         snprintf(label, sizeof(label), "1 2 3 [%d]", 4);
+//         parseStringField("", 0, label, &context->content->arg4, &read, &written);
         
-        for (uint32_t i = 0; i < loop; ++i) {
-            appendNameToArgument(buffer, bufferLength, &context->content->arg4, &read, &written);
-            buffer += read; bufferLength -= read;
-            appendStringArgument(" ", &context->content->arg4, &read, &written);
-        }
+//         for (uint32_t i = 0; i < loop; ++i) {
+//             appendNameToArgument(buffer, bufferLength, &context->content->arg4, &read, &written);
+//             buffer += read; bufferLength -= read;
+//             appendStringArgument(" ", &context->content->arg4, &read, &written);
+//         }
         
-        producersLeft -= loop;
-        context->content->activeBuffers += 1;
-    }
-}
+//         producersLeft -= loop;
+//         context->content->activeBuffers += 1;
+//     }
+// }
 
-static void parseEosioUpdateAuth(txProcessingContext_t *context, bool delete) {
-    uint32_t bufferLength = context->currentActionDataBufferLength;
-    uint8_t *buffer = context->actionDataBuffer;
+// static void parseEosioUpdateAuth(txProcessingContext_t *context, bool delete) {
+//     uint32_t bufferLength = context->currentActionDataBufferLength;
+//     uint8_t *buffer = context->actionDataBuffer;
     
-    uint32_t read = 0;
-    uint32_t written = 0;
+//     uint32_t read = 0;
+//     uint32_t written = 0;
 
-    parseNameField2(buffer, bufferLength, "Account", &context->content->arg0, &read, &written);
-    buffer += read; bufferLength -= read;
+//     parseNameField(buffer, bufferLength, "Account", &context->content->arg0, &read, &written);
+//     buffer += read; bufferLength -= read;
 
-    parseNameField2(buffer, bufferLength, "Permission", &context->content->arg1, &read, &written);
-    buffer += read; bufferLength -= read;
+//     parseNameField(buffer, bufferLength, "Permission", &context->content->arg1, &read, &written);
+//     buffer += read; bufferLength -= read;
 
-    context->content->activeBuffers = 2;   
+//     context->content->activeBuffers = 2;   
 
-    if (delete) {
-        return;
-    } 
+//     if (delete) {
+//         return;
+//     } 
 
-    name_t parent = 0;
-    os_memmove(&parent, buffer, sizeof(parent));
-    if (parent != 0) {
-        parseNameField2(buffer, bufferLength, "Parent", &context->content->arg2, &read, &written);
-    } else {
-        parseStringField2("", 0, "Parent", &context->content->arg2, &read, &written);
-        appendStringArgument("None", &context->content->arg2, &read, &written);
-        read = sizeof(parent);
-    }
-    buffer += read; bufferLength -= read;
-    context->content->activeBuffers += 1;
+//     name_t parent = 0;
+//     os_memmove(&parent, buffer, sizeof(parent));
+//     if (parent != 0) {
+//         parseNameField(buffer, bufferLength, "Parent", &context->content->arg2, &read, &written);
+//     } else {
+//         parseStringField("", 0, "Parent", &context->content->arg2, &read, &written);
+//         appendStringArgument("None", &context->content->arg2, &read, &written);
+//         read = sizeof(parent);
+//     }
+//     buffer += read; bufferLength -= read;
+//     context->content->activeBuffers += 1;
 
-    // Auth argumets
-    parseUint32Field(buffer, bufferLength, "Threshold", &context->content->arg3, &read, &written);
-    buffer += read; bufferLength -= read;
-    context->content->activeBuffers += 1;
+//     // Auth argumets
+//     parseUint32Field(buffer, bufferLength, "Threshold", &context->content->arg3, &read, &written);
+//     buffer += read; bufferLength -= read;
+//     context->content->activeBuffers += 1;
     
-    uint32_t keyNumber = 0;
-    read = unpack_variant32(buffer, bufferLength, &keyNumber);
-    buffer += read; bufferLength -= read;
+//     uint32_t keyNumber = 0;
+//     read = unpack_variant32(buffer, bufferLength, &keyNumber);
+//     buffer += read; bufferLength -= read;
 
-    if (keyNumber > 1) {
-        PRINTF("Not enough place to display more than 1 Public Key");
-        THROW(EXCEPTION);
-    }
+//     if (keyNumber > 1) {
+//         PRINTF("Not enough place to display more than 1 Public Key");
+//         THROW(EXCEPTION);
+//     }
 
-    for (uint32_t i = 0; i < keyNumber; ++i) {
-        uint32_t curveType = 0;
-        read = unpack_variant32(buffer, bufferLength, &curveType);
-        buffer += read; bufferLength -= read;
+//     for (uint32_t i = 0; i < keyNumber; ++i) {
+//         uint32_t curveType = 0;
+//         read = unpack_variant32(buffer, bufferLength, &curveType);
+//         buffer += read; bufferLength -= read;
 
-        parsePublicKeyField(buffer, bufferLength, "Public Key", &context->content->arg4, &read, &written);
-        buffer += read; bufferLength -= read;
+//         parsePublicKeyField(buffer, bufferLength, "Public Key", &context->content->arg4, &read, &written);
+//         buffer += read; bufferLength -= read;
         
-        appendStringArgument(" : ", &context->content->arg4, &read, &written);
-        appendUint16Argument(buffer, bufferLength, &context->content->arg4, &read, &written);
-        buffer += read; bufferLength -= read;
-    }
+//         appendStringArgument(" : ", &context->content->arg4, &read, &written);
+//         appendUint16Argument(buffer, bufferLength, &context->content->arg4, &read, &written);
+//         buffer += read; bufferLength -= read;
+//     }
 
-    if (keyNumber > 0) {
-        context->content->activeBuffers += 1;
-    }
+//     if (keyNumber > 0) {
+//         context->content->activeBuffers += 1;
+//     }
 
-    uint32_t accoutNumber = 0;
-    read = unpack_variant32(buffer, bufferLength, &accoutNumber);
-    buffer += read; bufferLength -= read;
+//     uint32_t accoutNumber = 0;
+//     read = unpack_variant32(buffer, bufferLength, &accoutNumber);
+//     buffer += read; bufferLength -= read;
 
-    if (accoutNumber > 1) {
-        PRINTF("Right now we are supporting one account");
-        THROW(EXCEPTION);
-    }
+//     if (accoutNumber > 1) {
+//         PRINTF("Right now we are supporting one account");
+//         THROW(EXCEPTION);
+//     }
 
-    for (uint32_t i = 0; i < accoutNumber; ++i) {
-        parseNameField2(buffer, bufferLength, "Account", &context->content->arg5, &read, &written);
-        buffer += read; bufferLength -= read;
+//     for (uint32_t i = 0; i < accoutNumber; ++i) {
+//         parseNameField(buffer, bufferLength, "Account", &context->content->arg5, &read, &written);
+//         buffer += read; bufferLength -= read;
 
-        appendStringArgument("@", &context->content->arg5, &read, &written);
-        appendNameToArgument(buffer, bufferLength, &context->content->arg5, &read, &written);
-        buffer += read; bufferLength -= read;
+//         appendStringArgument("@", &context->content->arg5, &read, &written);
+//         appendNameToArgument(buffer, bufferLength, &context->content->arg5, &read, &written);
+//         buffer += read; bufferLength -= read;
 
-        appendStringArgument(" : ", &context->content->arg5, &read, &written);
-        appendUint16Argument(buffer, bufferLength, &context->content->arg5, &read, &written);
-        buffer += read; bufferLength -= read;
-    }
+//         appendStringArgument(" : ", &context->content->arg5, &read, &written);
+//         appendUint16Argument(buffer, bufferLength, &context->content->arg5, &read, &written);
+//         buffer += read; bufferLength -= read;
+//     }
 
-    if (accoutNumber > 0) {
-        context->content->activeBuffers += 1;
-    }
+//     if (accoutNumber > 0) {
+//         context->content->activeBuffers += 1;
+//     }
 
-    uint32_t waitNumber = 0;
-    read = unpack_variant32(buffer, bufferLength, &waitNumber);
-    buffer += read; bufferLength -= read;
+//     uint32_t waitNumber = 0;
+//     read = unpack_variant32(buffer, bufferLength, &waitNumber);
+//     buffer += read; bufferLength -= read;
 
     // if (waitNumber > 1) {
     //     PRINTF("Right now we are supporting one wait option");
@@ -561,35 +417,35 @@ static void parseEosioUpdateAuth(txProcessingContext_t *context, bool delete) {
     // if (waitNumber > 0) {
     //     context->content->activeBuffers += 1;
     // }
-}
+// }
 
-static void parseEosioLinkAuth(txProcessingContext_t *context, bool unlink) {
-    uint32_t bufferLength = context->currentActionDataBufferLength;
-    uint8_t *buffer = context->actionDataBuffer;
+// static void parseEosioLinkAuth(txProcessingContext_t *context, bool unlink) {
+//     uint32_t bufferLength = context->currentActionDataBufferLength;
+//     uint8_t *buffer = context->actionDataBuffer;
     
-    uint32_t read = 0;
-    uint32_t written = 0;
+//     uint32_t read = 0;
+//     uint32_t written = 0;
 
-    parseNameField2(buffer, bufferLength, "Account", &context->content->arg0, &read, &written);
-    buffer += read; bufferLength -= read;
+//     parseNameField(buffer, bufferLength, "Account", &context->content->arg0, &read, &written);
+//     buffer += read; bufferLength -= read;
 
-    parseNameField2(buffer, bufferLength, "Contract", &context->content->arg1, &read, &written);
-    buffer += read; bufferLength -= read;
+//     parseNameField(buffer, bufferLength, "Contract", &context->content->arg1, &read, &written);
+//     buffer += read; bufferLength -= read;
 
-    parseNameField2(buffer, bufferLength, "Action", &context->content->arg2, &read, &written);
-    buffer += read; bufferLength -= read;
+//     parseNameField(buffer, bufferLength, "Action", &context->content->arg2, &read, &written);
+//     buffer += read; bufferLength -= read;
 
-    context->content->activeBuffers = 3;
+//     context->content->activeBuffers = 3;
 
-    if (unlink) {
-         return;
-    }
+//     if (unlink) {
+//          return;
+//     }
 
-    parseNameField2(buffer, bufferLength, "Permission", &context->content->arg3, &read, &written);
-    buffer += read; bufferLength -= read;
+//     parseNameField(buffer, bufferLength, "Permission", &context->content->arg3, &read, &written);
+//     buffer += read; bufferLength -= read;
 
-    context->content->activeBuffers = 4;
-}
+//     context->content->activeBuffers = 4;
+// }
 
 void printArgument(uint8_t argNum, txProcessingContext_t *context) {
     uint32_t bufferLength = context->currentActionDataBufferLength;
@@ -599,16 +455,16 @@ void printArgument(uint8_t argNum, txProcessingContext_t *context) {
     uint32_t written = 0;
 
     if (argNum == 0) {
-        parseNameField2(buffer, bufferLength, "From", &context->content->arg0, &read, &written);
+        parseNameField(buffer, bufferLength, "From", &context->content->arg0, &read, &written);
     } else if (argNum == 1) {
         buffer += sizeof(name_t); bufferLength -= sizeof(name_t);
-        parseNameField2(buffer, bufferLength, "To", &context->content->arg0, &read, &written);
+        parseNameField(buffer, bufferLength, "To", &context->content->arg0, &read, &written);
     } else if (argNum == 2) {
         buffer += 2 * sizeof(name_t); bufferLength -= 2 * sizeof(name_t);
-        parseAssetField2(buffer, bufferLength, "Quantity", &context->content->arg0, &read, &written);
+        parseAssetField(buffer, bufferLength, "Quantity", &context->content->arg0, &read, &written);
     } else if (argNum == 3) {
         buffer += 2 * sizeof(name_t) + sizeof(asset_t); bufferLength -= 2 * sizeof(name_t) + sizeof(asset_t);
-        parseStringField2(buffer, bufferLength, "Memo", &context->content->arg0, &read, &written);
+        parseStringField(buffer, bufferLength, "Memo", &context->content->arg0, &read, &written);
     }
 }
 
@@ -887,35 +743,36 @@ static void processActionData(txProcessingContext_t *context) {
         context->currentActionDataBufferLength = context->currentFieldLength;
 
         if (context->contractActionName == EOSIO_TOKEN_TRANSFER) {
-            parseEosioTokenTransfer2(context);
+            // parseEosioTokenTransfer(context);
+            processTokenTransfer(context);
         } else if (context->contractName == EOSIO &&
                   (context->contractActionName == EOSIO_DELEGATEBW || 
                    context->contractActionName == EOSIO_UNDELEGATEBW)) {
-            parseEosioDelegateUndlegate2(context);
+            // parseEosioDelegateUndlegate(context);
         } else if (context->contractName == EOSIO && 
                    context->contractActionName == EOSIO_VOTEPRODUCER) {
-            parseEosioVoteProducer(context);
+            // parseEosioVoteProducer(context);
         } else if (context->contractName == EOSIO && 
                    context->contractActionName == EOSIO_BUYRAM) {
-            parseEosioBuyRam(context, false);
+            // parseEosioBuyRam(context, false);
         } else if (context->contractName == EOSIO &&
                    context->contractActionName == EOSIO_BUYRAMBYTES) {
-            parseEosioBuyRam(context, true);
+            // parseEosioBuyRam(context, true);
         } else if (context->contractName == EOSIO &&
                    context->contractActionName == EOSIO_SELLRAM) {
-            parseEosioSellRam(context);
+            // parseEosioSellRam(context);
         } else if (context->contractName == EOSIO &&
                    context->contractActionName == EOSIO_UPDATE_AUTH) {
-            parseEosioUpdateAuth(context, false);
+            // parseEosioUpdateAuth(context, false);
         } else if (context->contractName == EOSIO &&
                    context->contractActionName == EOSIO_DELETE_AUTH) {
-            parseEosioUpdateAuth(context, true);
+            // parseEosioUpdateAuth(context, true);
         } else if (context->contractName == EOSIO &&
                    context->contractActionName == EOSIO_LINK_AUTH) {
-            parseEosioLinkAuth(context, false);
+            // parseEosioLinkAuth(context, false);
         } else if (context->contractName == EOSIO &&
                    context->contractActionName == EOSIO_UNLINK_AUTH) {
-            parseEosioLinkAuth(context, true);
+            // parseEosioLinkAuth(context, true);
         } else {
             THROW(EXCEPTION);
         }

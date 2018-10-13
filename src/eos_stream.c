@@ -139,42 +139,13 @@ static void processEosioDelegateUndelegate(txProcessingContext_t *context) {
     context->content->activeBuffers = 4;
 }
 
-// static void parseEosioBuyRam(txProcessingContext_t *context, bool bytes) {
-//     uint32_t bufferLength = context->currentActionDataBufferLength;
-//     uint8_t *buffer = context->actionDataBuffer;
+static void processEosioBuyRam(txProcessingContext_t *context) {
+    context->content->activeBuffers = 3;
+}
 
-//     uint32_t read = 0;
-//     uint32_t written = 0;
-
-//     parseNameField(buffer, bufferLength, "Buyer", &context->content->arg0, &read, &written);
-//     buffer += read; bufferLength -= read;
-
-//     parseNameField(buffer, bufferLength, "Receiver", &context->content->arg1, &read, &written);
-//     buffer += read; bufferLength -= read;
-
-//     if (bytes) {
-//         parseUint32Field(buffer, bufferLength, "Bytes", &context->content->arg2, &read, &written);
-//     } else {
-//         parseAssetField(buffer, bufferLength, "Tokens", &context->content->arg2, &read, &written);
-//     }
-
-//     context->content->activeBuffers = 3;
-// }
-
-// static void parseEosioSellRam(txProcessingContext_t *context) {
-//     uint32_t bufferLength = context->currentActionDataBufferLength;
-//     uint8_t *buffer = context->actionDataBuffer;
-    
-//     uint32_t read = 0;
-//     uint32_t written = 0;
-    
-//     parseNameField(buffer, bufferLength, "Receiver", &context->content->arg0, &read, &written);
-//     buffer += read; bufferLength -= read;
-    
-//     parseUInt64Field(buffer, bufferLength, "Bytes", &context->content->arg1, &read, &written);
-    
-//     context->content->activeBuffers = 2;
-// }
+static void processEosioSellRam(txProcessingContext_t *context) {
+    context->content->activeBuffers = 2;
+}
 
 // static void parseEosioVoteProducer(txProcessingContext_t *context) {
 //     uint32_t bufferLength = context->currentActionDataBufferLength;
@@ -416,8 +387,25 @@ void printArgument(uint8_t argNum, txProcessingContext_t *context) {
 
     if (actionName == EOSIO_TOKEN_TRANSFER) {
         parseTokenTransfer(buffer, bufferLength, argNum, arg);
-    } else if (contractName == EOSIO && actionName == EOSIO_DELEGATEBW || actionName == EOSIO_UNDELEGATEBW) {
-        parseDelegateUndelegate(buffer, bufferLength, argNum, arg);
+        return;
+    }
+
+    if (contractName == EOSIO) {
+        switch (actionName) {
+        case EOSIO_DELEGATEBW:
+        case EOSIO_UNDELEGATEBW:
+            parseDelegateUndelegate(buffer, bufferLength, argNum, arg);
+            break;
+        case EOSIO_BUYRAM:
+            parseBuyRam(buffer, bufferLength, argNum, arg);
+            break;
+        case EOSIO_BUYRAMBYTES:
+            parseBuyRamBytes(buffer, bufferLength, argNum, arg);
+            break;
+        case EOSIO_SELLRAM:
+            parseSellRam(buffer, bufferLength, argNum, arg);
+            break;
+        }
     }
 }
 
@@ -700,20 +688,17 @@ static void processActionData(txProcessingContext_t *context) {
         } else if (context->contractName == EOSIO &&
                   (context->contractActionName == EOSIO_DELEGATEBW || 
                    context->contractActionName == EOSIO_UNDELEGATEBW)) {
-            // parseEosioDelegateUndlegate(context);
             processEosioDelegateUndelegate(context);
         } else if (context->contractName == EOSIO && 
                    context->contractActionName == EOSIO_VOTEPRODUCER) {
             // parseEosioVoteProducer(context);
         } else if (context->contractName == EOSIO && 
-                   context->contractActionName == EOSIO_BUYRAM) {
-            // parseEosioBuyRam(context, false);
-        } else if (context->contractName == EOSIO &&
-                   context->contractActionName == EOSIO_BUYRAMBYTES) {
-            // parseEosioBuyRam(context, true);
+                  (context->contractActionName == EOSIO_BUYRAM ||
+                   context->contractActionName == EOSIO_BUYRAMBYTES)) {
+            processEosioBuyRam(context);
         } else if (context->contractName == EOSIO &&
                    context->contractActionName == EOSIO_SELLRAM) {
-            // parseEosioSellRam(context);
+            processEosioSellRam(context);
         } else if (context->contractName == EOSIO &&
                    context->contractActionName == EOSIO_UPDATE_AUTH) {
             // parseEosioUpdateAuth(context, false);

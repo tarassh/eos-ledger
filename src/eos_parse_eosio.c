@@ -35,3 +35,45 @@ void parseDelegateUndelegate(uint8_t *buffer, uint32_t bufferLength, uint8_t arg
         parseAssetField(buffer, bufferLength, "CPU", arg, &read, &written);
     }
 }
+
+void parseBuyRam(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, actionArgument_t *arg) {
+    uint32_t read = 0;
+    uint32_t written = 0;
+
+    if (argNum == 0) {
+        parseNameField(buffer, bufferLength, "Buyer", arg, &read, &written);
+    } else if (argNum == 1) {
+        buffer += sizeof(name_t); bufferLength -= sizeof(name_t);
+        parseNameField(buffer, bufferLength, "Receiver", arg, &read, &written);
+    } else if (argNum == 2) {
+        buffer += 2 * sizeof(name_t); bufferLength -= 2 * sizeof(name_t);
+        parseAssetField(buffer, bufferLength, "Tokens", arg, &read, &written);
+    }
+}
+
+void parseBuyRamBytes(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, actionArgument_t *arg) {
+    uint32_t read = 0;
+    uint32_t written = 0;
+
+    if (argNum == 0) {
+        parseNameField(buffer, bufferLength, "Buyer", arg, &read, &written);
+    } else if (argNum == 1) {
+        buffer += sizeof(name_t); bufferLength -= sizeof(name_t);
+        parseNameField(buffer, bufferLength, "Receiver", arg, &read, &written);
+    } else if (argNum == 2) {
+        buffer += 2 * sizeof(name_t); bufferLength -= 2 * sizeof(name_t);
+        parseUint32Field(buffer, bufferLength, "Bytes", arg, &read, &written);
+    }
+}
+
+void parseSellRam(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, actionArgument_t *arg) {
+    uint32_t read = 0;
+    uint32_t written = 0;
+
+    if (argNum == 0) {
+        parseNameField(buffer, bufferLength, "Receiver", arg, &read, &written);
+    } else if (argNum == 1) {
+        buffer += sizeof(name_t); bufferLength -= sizeof(name_t);
+        parseUInt64Field(buffer, bufferLength, "Bytes", arg, &read, &written);
+    }
+}

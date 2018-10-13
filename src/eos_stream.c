@@ -132,7 +132,17 @@ static void appendUint16Argument(uint8_t *in, uint32_t inLength, actionArgument_
 }
 
 static void processTokenTransfer(txProcessingContext_t *context) {
-    context->content->activeBuffers = 4;
+    context->content->activeBuffers = 3;
+    uint32_t bufferLength = context->currentActionDataBufferLength;
+    uint8_t *buffer = context->actionDataBuffer;
+
+    buffer += 2 * sizeof(name_t) + sizeof(asset_t); 
+    bufferLength -= 2 * sizeof(name_t) + sizeof(asset_t);
+    uint32_t memoLength = 0;
+    unpack_variant32(buffer, bufferLength, &memoLength);
+    if (memoLength > 0) {
+        context->content->activeBuffers++;
+    }
 }
 
 static void processEosioDelegateUndelegate(txProcessingContext_t *context) {

@@ -22,6 +22,8 @@
 #include "eos_types.h"
 #include "eos_utils.h"
 #include "eos_parse.h"
+#include "eos_parse_token.h"
+#include "eos_parse_eosio.h"
 
 #define EOSIO_TOKEN          0x5530EA033482A600
 #define EOSIO_TOKEN_TRANSFER 0xCDCD3C2D57000000
@@ -129,55 +131,13 @@ static void appendUint16Argument(uint8_t *in, uint32_t inLength, actionArgument_
     *written = strlen(arg->data);
 }
 
-/**
- * Parse eosio.token transfer action
-*/
-// static void parseEosioTokenTransfer(txProcessingContext_t *context) {
-
-//     uint32_t bufferLength = context->currentActionDataBufferLength;
-//     uint8_t *buffer = context->actionDataBuffer;
-
-//     uint32_t read = 0;
-//     uint32_t written = 0;
-
-//     parseNameField(buffer, bufferLength, "From", &context->content->arg0, &read, &written);
-//     buffer += read; bufferLength -= read;
-
-//     parseNameField(buffer, bufferLength, "To", &context->content->arg1, &read, &written);
-//     buffer += read; bufferLength -= read;
-
-//     parseAssetField(buffer, bufferLength, "Quantity", &context->content->arg2, &read, &written);
-//     buffer += read; bufferLength -= read;
-    
-//     parseStringField(buffer, bufferLength, "Memo", &context->content->arg3, &read, &written);
-
-//     context->content->activeBuffers = 4;
-// }
-
 static void processTokenTransfer(txProcessingContext_t *context) {
     context->content->activeBuffers = 4;
 }
 
-// static void parseEosioDelegateUndlegate(txProcessingContext_t *context) {
-//     uint32_t bufferLength = context->currentActionDataBufferLength;
-//     uint8_t *buffer = context->actionDataBuffer;
-
-//     uint32_t read = 0;
-//     uint32_t written = 0;
-
-//     parseNameField(buffer, bufferLength, "From", &context->content->arg0, &read, &written);
-//     buffer += read; bufferLength -= read;
-    
-//     parseNameField(buffer, bufferLength, "Receiver", &context->content->arg1, &read, &written);
-//     buffer += read; bufferLength -= read;
-    
-//     parseAssetField(buffer, bufferLength, "Network", &context->content->arg2, &read, &written);
-//     buffer += read; bufferLength -= read;
-    
-//     parseAssetField(buffer, bufferLength, "CPU", &context->content->arg3, &read, &written);
-
-//     context->content->activeBuffers = 4;
-// }
+static void processEosioDelegateUndelegate(txProcessingContext_t *context) {
+    context->content->activeBuffers = 4;
+}
 
 // static void parseEosioBuyRam(txProcessingContext_t *context, bool bytes) {
 //     uint32_t bufferLength = context->currentActionDataBufferLength;
@@ -448,23 +408,16 @@ static void processTokenTransfer(txProcessingContext_t *context) {
 // }
 
 void printArgument(uint8_t argNum, txProcessingContext_t *context) {
-    uint32_t bufferLength = context->currentActionDataBufferLength;
+    name_t contractName = context->contractName;
+    name_t actionName = context->contractActionName;
     uint8_t *buffer = context->actionDataBuffer;
+    uint32_t bufferLength = context->currentActionDataBufferLength;
+    actionArgument_t *arg =  &context->content->arg0;
 
-    uint32_t read = 0;
-    uint32_t written = 0;
-
-    if (argNum == 0) {
-        parseNameField(buffer, bufferLength, "From", &context->content->arg0, &read, &written);
-    } else if (argNum == 1) {
-        buffer += sizeof(name_t); bufferLength -= sizeof(name_t);
-        parseNameField(buffer, bufferLength, "To", &context->content->arg0, &read, &written);
-    } else if (argNum == 2) {
-        buffer += 2 * sizeof(name_t); bufferLength -= 2 * sizeof(name_t);
-        parseAssetField(buffer, bufferLength, "Quantity", &context->content->arg0, &read, &written);
-    } else if (argNum == 3) {
-        buffer += 2 * sizeof(name_t) + sizeof(asset_t); bufferLength -= 2 * sizeof(name_t) + sizeof(asset_t);
-        parseStringField(buffer, bufferLength, "Memo", &context->content->arg0, &read, &written);
+    if (actionName == EOSIO_TOKEN_TRANSFER) {
+        parseTokenTransfer(buffer, bufferLength, argNum, arg);
+    } else if (contractName == EOSIO && actionName == EOSIO_DELEGATEBW || actionName == EOSIO_UNDELEGATEBW) {
+        parseDelegateUndelegate(buffer, bufferLength, argNum, arg);
     }
 }
 
@@ -743,12 +696,12 @@ static void processActionData(txProcessingContext_t *context) {
         context->currentActionDataBufferLength = context->currentFieldLength;
 
         if (context->contractActionName == EOSIO_TOKEN_TRANSFER) {
-            // parseEosioTokenTransfer(context);
             processTokenTransfer(context);
         } else if (context->contractName == EOSIO &&
                   (context->contractActionName == EOSIO_DELEGATEBW || 
                    context->contractActionName == EOSIO_UNDELEGATEBW)) {
             // parseEosioDelegateUndlegate(context);
+            processEosioDelegateUndelegate(context);
         } else if (context->contractName == EOSIO && 
                    context->contractActionName == EOSIO_VOTEPRODUCER) {
             // parseEosioVoteProducer(context);

@@ -147,96 +147,25 @@ static void processEosioSellRam(txProcessingContext_t *context) {
     context->content->activeBuffers = 2;
 }
 
-// static void parseEosioVoteProducer(txProcessingContext_t *context) {
-//     uint32_t bufferLength = context->currentActionDataBufferLength;
-//     uint8_t *buffer = context->actionDataBuffer;
+static void processEosioVoteProducer(txProcessingContext_t *context) {
+    uint32_t bufferLength = context->currentActionDataBufferLength;
+    uint8_t *buffer = context->actionDataBuffer;
 
-//     uint32_t read = 0;
-//     uint32_t written = 0;
+    context->content->activeBuffers = 1;
+    buffer += sizeof(name_t);
 
-//     parseNameField(buffer, bufferLength, "Account", &context->content->arg0, &read, &written);
-//     buffer += read; bufferLength -= read;
-//     context->content->activeBuffers = 1;
-    
-//     name_t proxy = 0;
-//     os_memmove(&proxy, buffer, sizeof(proxy));
-//     if (proxy != 0) {
-//         parseNameField(buffer, bufferLength, "Proxy", &context->content->arg1, &read, &written);
-//         context->content->activeBuffers += 1;
-//     }
-//     buffer += read; bufferLength -= read;
+    name_t proxy = 0;
+    os_memmove(&proxy, buffer, sizeof(name_t));
+    if (proxy != 0) {
+        context->content->activeBuffers++;
+        return;
+    }
+    buffer += sizeof(name_t);
 
-//     uint32_t totalProducers = 0;
-//     read = unpack_variant32(buffer, bufferLength, &totalProducers);
-//     buffer += read; bufferLength -= read;
-    
-//     if (proxy != 0 && totalProducers != 0) {
-//         THROW(EXCEPTION);
-//     } else if (proxy != 0) {
-//         return;
-//     }
-    
-//     uint32_t loop = totalProducers > 8 ? 8 : totalProducers;
-//     uint32_t pages = (totalProducers / 8) + (totalProducers % 8 > 0 ? 1 : 0);
-
-//     char label[14];
-//     snprintf(label, sizeof(label), "[%d] .. %d", 1, pages);
-//     parseStringField("", 0, label, &context->content->arg1, &read, &written);
-
-//     for (uint32_t i = 0; i < loop; ++i) {
-//         appendNameToArgument(buffer, bufferLength, &context->content->arg1, &read, &written);
-//         buffer += read; bufferLength -= read;
-//         appendStringArgument(" ", &context->content->arg1, &read, &written);
-//     }
-
-//     context->content->activeBuffers += 1;
-//     uint32_t producersLeft = totalProducers - loop;
-    
-//     if (producersLeft > 0) {
-//         loop = producersLeft > 8 ? 8 : producersLeft;
-//         snprintf(label, sizeof(label), "1 [%d] .. %d", 2, pages);
-//         parseStringField("", 0, label, &context->content->arg2, &read, &written);
-        
-//         for (uint32_t i = 0; i < loop; ++i) {
-//             appendNameToArgument(buffer, bufferLength, &context->content->arg2, &read, &written);
-//             buffer += read; bufferLength -= read;
-//             appendStringArgument(" ", &context->content->arg2, &read, &written);
-//         }
-        
-//         producersLeft -= loop;
-//         context->content->activeBuffers += 1;
-//     }
-    
-//     if (producersLeft > 0) {
-//         loop = producersLeft > 8 ? 8 : producersLeft;
-//         snprintf(label, sizeof(label), "1 2 [%d] .. %d", 3, pages);
-//         parseStringField("", 0, label, &context->content->arg3, &read, &written);
-        
-//         for (uint32_t i = 0; i < loop; ++i) {
-//             appendNameToArgument(buffer, bufferLength, &context->content->arg3, &read, &written);
-//             buffer += read; bufferLength -= read;
-//             appendStringArgument(" ", &context->content->arg3, &read, &written);
-//         }
-        
-//         producersLeft -= loop;
-//         context->content->activeBuffers += 1;
-//     }
-    
-//     if (producersLeft > 0) {
-//         loop = producersLeft > 8 ? 8 : producersLeft;
-//         snprintf(label, sizeof(label), "1 2 3 [%d]", 4);
-//         parseStringField("", 0, label, &context->content->arg4, &read, &written);
-        
-//         for (uint32_t i = 0; i < loop; ++i) {
-//             appendNameToArgument(buffer, bufferLength, &context->content->arg4, &read, &written);
-//             buffer += read; bufferLength -= read;
-//             appendStringArgument(" ", &context->content->arg4, &read, &written);
-//         }
-        
-//         producersLeft -= loop;
-//         context->content->activeBuffers += 1;
-//     }
-// }
+    uint32_t totalProducers = 0;
+    unpack_variant32(buffer, bufferLength, &totalProducers);
+    context->content->activeBuffers += totalProducers;
+}
 
 // static void parseEosioUpdateAuth(txProcessingContext_t *context, bool delete) {
 //     uint32_t bufferLength = context->currentActionDataBufferLength;
@@ -404,6 +333,9 @@ void printArgument(uint8_t argNum, txProcessingContext_t *context) {
             break;
         case EOSIO_SELLRAM:
             parseSellRam(buffer, bufferLength, argNum, arg);
+            break;
+        case EOSIO_VOTEPRODUCER:
+            parseVoteProducer(buffer, bufferLength, argNum, arg);
             break;
         }
     }
@@ -691,7 +623,7 @@ static void processActionData(txProcessingContext_t *context) {
             processEosioDelegateUndelegate(context);
         } else if (context->contractName == EOSIO && 
                    context->contractActionName == EOSIO_VOTEPRODUCER) {
-            // parseEosioVoteProducer(context);
+            processEosioVoteProducer(context);
         } else if (context->contractName == EOSIO && 
                   (context->contractActionName == EOSIO_BUYRAM ||
                    context->contractActionName == EOSIO_BUYRAMBYTES)) {

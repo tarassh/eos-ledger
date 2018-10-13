@@ -17,6 +17,7 @@
 
 #include "eos_parse_eosio.h"
 #include "eos_types.h"
+#include "os.h"
 
 void parseDelegateUndelegate(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, actionArgument_t *arg) {
     uint32_t read = 0;
@@ -76,4 +77,38 @@ void parseSellRam(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, action
         buffer += sizeof(name_t); bufferLength -= sizeof(name_t);
         parseUInt64Field(buffer, bufferLength, "Bytes", arg, &read, &written);
     }
+}
+
+void parseVoteProducer(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, actionArgument_t *arg) {
+    uint32_t read = 0;
+    uint32_t written = 0;
+
+    if (argNum == 0) {
+        parseNameField(buffer, bufferLength, "Account", arg, &read, &written);
+        return;
+    }
+
+    uint8_t *proxyBuffer = buffer + sizeof(name_t);
+    name_t proxy = 0;
+    os_memmove(&proxy, proxyBuffer, sizeof(name_t));
+    if (proxy != 0 && argNum == 1) {
+        parseNameField(proxyBuffer, sizeof(name_t), "Proxy", arg, &read, &written);
+        return;
+    }
+
+    // Move to producers list
+    buffer += 2 * sizeof(name_t);
+    bufferLength -= 2 * sizeof(name_t);
+
+    uint32_t totalProducers = 0;
+    read = unpack_variant32(buffer, bufferLength, &totalProducers);
+    buffer += read; bufferLength -= read;
+
+    uint32_t producerIndex = argNum - 1;
+    buffer += producerIndex * sizeof(name_t);
+    bufferLength -= producerIndex * sizeof(name_t);
+
+    char label[14] = { 0 };
+    snprintf(label, sizeof(label) - 1, "Producer #%d [%d]", argNum, totalProducers);
+    parseNameField(buffer, bufferLength, label, arg, &read, &written);
 }

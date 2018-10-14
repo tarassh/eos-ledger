@@ -147,6 +147,14 @@ static void processEosioDeleteAuth(txProcessingContext_t *context) {
     context->content->activeBuffers = 2;  
 }
 
+static void processEosioLinkAuth(txProcessingContext_t *context) {
+    context->content->activeBuffers = 4;  
+}
+
+static void processEosioUnlinkAuth(txProcessingContext_t *context) {
+    context->content->activeBuffers = 3;  
+}
+
 void printArgument(uint8_t argNum, txProcessingContext_t *context) {
     name_t contractName = context->contractName;
     name_t actionName = context->contractActionName;
@@ -185,6 +193,15 @@ void printArgument(uint8_t argNum, txProcessingContext_t *context) {
             break;
         case EOSIO_DELETE_AUTH:
             parseDeleteAuth(buffer, bufferLength, argNum, arg);
+            break;
+        case EOSIO_LINK_AUTH:
+            parseLinkAuth(buffer, bufferLength, argNum, arg);
+            break;
+        case EOSIO_UNLINK_AUTH:
+            parseUnlinkAuth(buffer, bufferLength, argNum, arg);
+            break;
+        default:
+            // TODO: parse UNKNOWN Actions
             break;
         }
     }
@@ -491,11 +508,12 @@ static void processActionData(txProcessingContext_t *context) {
             processEosioDeleteAuth(context);
         } else if (context->contractName == EOSIO &&
                    context->contractActionName == EOSIO_LINK_AUTH) {
-            // parseEosioLinkAuth(context, false);
+            processEosioLinkAuth(context);
         } else if (context->contractName == EOSIO &&
                    context->contractActionName == EOSIO_UNLINK_AUTH) {
-            // parseEosioLinkAuth(context, true);
+            processEosioUnlinkAuth(context);
         } else {
+            // TODO: process unknown action
             THROW(EXCEPTION);
         }
         context->state = TLV_TX_EXTENSION_LIST_SIZE;

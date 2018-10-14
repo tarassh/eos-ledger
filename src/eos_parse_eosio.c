@@ -270,3 +270,53 @@ void parseDeleteAuth(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, act
         return;
     }
 }
+
+void parseLinkAuth(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, actionArgument_t *arg) {
+    uint32_t read = 0;
+    uint32_t written = 0;
+
+    if (argNum == 0) {
+        parseNameField(buffer, bufferLength, "Account", arg, &read, &written);
+        return;
+    } 
+    
+    if (argNum == 1) {
+        buffer += sizeof(name_t); bufferLength -= sizeof(name_t);
+        parseNameField(buffer, bufferLength, "Contract", arg, &read, &written);
+        return;
+    }
+
+    if (argNum == 2) {
+        buffer += 2 * sizeof(name_t); bufferLength -= 2 * sizeof(name_t);
+        parseNameField(buffer, bufferLength, "Action", arg, &read, &written);
+        return;
+    }
+
+    if (argNum == 3) {
+        buffer += 3 * sizeof(name_t); bufferLength -= 3 * sizeof(name_t);
+        parseNameField(buffer, bufferLength, "Permission", arg, &read, &written);
+        return;
+    }
+}
+
+void parseUnlinkAuth(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, actionArgument_t *arg) {
+    uint32_t read = 0;
+    uint32_t written = 0;
+
+    if (argNum == 0) {
+        parseNameField(buffer, bufferLength, "Account", arg, &read, &written);
+        return;
+    } 
+    
+    if (argNum == 1) {
+        buffer += sizeof(name_t); bufferLength -= sizeof(name_t);
+        parseNameField(buffer, bufferLength, "Contract", arg, &read, &written);
+        return;
+    }
+
+    if (argNum == 2) {
+        buffer += 2 * sizeof(name_t); bufferLength -= 2 * sizeof(name_t);
+        parseNameField(buffer, bufferLength, "Action", arg, &read, &written);
+        return;
+    }
+}

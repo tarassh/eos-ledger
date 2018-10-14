@@ -42,7 +42,7 @@ def parse_bip32_path(path):
 donglePath = parse_bip32_path("44'/194'/0'/0/0")
 pathSize = len(donglePath) / 4
 
-with file('transaction_refund.json') as f:
+with file('transaction_unlinkauth.json') as f:
     obj = json.load(f)
     tx = Transaction.parse(obj)
     tx_raw = tx.encode()

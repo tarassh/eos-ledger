@@ -228,6 +228,21 @@ class Transaction:
         return Transaction.name_to_number(data['account'])
 
     @staticmethod
+    def parse_link_auth(data):
+        parameters = Transaction.name_to_number(data['account'])
+        parameters += Transaction.name_to_number(data['contract'])
+        parameters += Transaction.name_to_number(data['action'])
+        parameters += Transaction.name_to_number(data['permission'])
+        return parameters
+
+    @staticmethod
+    def parse_unlink_auth(data):
+        parameters = Transaction.name_to_number(data['account'])
+        parameters += Transaction.name_to_number(data['contract'])
+        parameters += Transaction.name_to_number(data['action'])
+        return parameters
+
+    @staticmethod
     def parse(json):
         tx = Transaction()
         tx.json = json
@@ -273,6 +288,10 @@ class Transaction:
             parameters = Transaction.parse_delete_auth(data)
         elif action['name'] == 'refund':
             parameters = Transaction.parse_refund(data)
+        elif action['name'] == 'linkauth':
+            parameters = Transaction.parse_link_auth(data)
+        elif action['name'] == 'unlinkauth':
+            parameters = Transaction.parse_unlink_auth(data)
 
         tx.data_size = Transaction.pack_fc_uint(len(parameters))
         tx.data = parameters

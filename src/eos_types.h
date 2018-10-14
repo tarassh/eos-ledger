@@ -24,6 +24,7 @@ typedef uint32_t variant32_t;
 typedef uint64_t name_t;
 typedef uint64_t symbol_t;
 typedef uint8_t checksum256[32];
+typedef uint8_t public_key_t[33];
 
 typedef struct transaction_header_t {
     uint32_t expiration;

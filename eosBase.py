@@ -199,7 +199,14 @@ class Transaction:
             parameters += Transaction.parse_public_key(key['key'])
             parameters += struct.pack('H', key['weight'])
         parameters += struct.pack('B', len(data['accounts']))
+        for account in data['accounts']:
+            parameters += Transaction.name_to_number(account['authorization']['actor'])
+            parameters += Transaction.name_to_number(account['authorization']['permission'])
+            parameters += struct.pack('H', account['weight'])
         parameters += struct.pack('B', len(data['waits']))
+        for wait in data['waits']:
+            parameters += struct.pack('I', wait['wait'])
+            parameters += struct.pack('H', wait['weight'])
         return parameters
     
     @staticmethod
@@ -214,6 +221,25 @@ class Transaction:
     def parse_delete_auth(data):
         parameters = Transaction.name_to_number(data['account'])
         parameters += Transaction.name_to_number(data['permission'])
+        return parameters
+
+    @staticmethod
+    def parse_refund(data):
+        return Transaction.name_to_number(data['account'])
+
+    @staticmethod
+    def parse_link_auth(data):
+        parameters = Transaction.name_to_number(data['account'])
+        parameters += Transaction.name_to_number(data['contract'])
+        parameters += Transaction.name_to_number(data['action'])
+        parameters += Transaction.name_to_number(data['permission'])
+        return parameters
+
+    @staticmethod
+    def parse_unlink_auth(data):
+        parameters = Transaction.name_to_number(data['account'])
+        parameters += Transaction.name_to_number(data['contract'])
+        parameters += Transaction.name_to_number(data['action'])
         return parameters
 
     @staticmethod
@@ -260,6 +286,12 @@ class Transaction:
             parameters = Transaction.parse_update_auth(data)
         elif action['name'] == 'deleteauth':
             parameters = Transaction.parse_delete_auth(data)
+        elif action['name'] == 'refund':
+            parameters = Transaction.parse_refund(data)
+        elif action['name'] == 'linkauth':
+            parameters = Transaction.parse_link_auth(data)
+        elif action['name'] == 'unlinkauth':
+            parameters = Transaction.parse_unlink_auth(data)
 
         tx.data_size = Transaction.pack_fc_uint(len(parameters))
         tx.data = parameters

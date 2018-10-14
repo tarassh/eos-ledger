@@ -156,9 +156,9 @@ void parseUpdateAuth(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, act
     uint8_t keysArgStart = 3;
 
     if (keysArgStart < argNum && argNum <= keysArgStart + totalKeys * 2) {
-        for (uint8_t i = 0, argIndex = 4; i < totalKeys; ++i, argIndex += 2) {
+        for (uint8_t i = 0, argIndex = keysArgStart + 1; i < totalKeys; ++i, argIndex += 2) {
             
-            char label[14] = { 0 };
+            char label[32] = { 0 };
             // Skip key Type
             keys += 1; keyBufferLength -= 1;
             
@@ -180,7 +180,35 @@ void parseUpdateAuth(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, act
         }
     }
 
+    // Accounts
     const uint32_t keyStep = (1 + sizeof(public_key_t) + sizeof(uint16_t));
     uint8_t *accounts = keys + keyStep * totalKeys;
-    uint32_t accountsBuffer = keyBufferLength - keyStep * totalKeys;
+    uint32_t accountsBufferLen = keyBufferLength - keyStep * totalKeys;
+    
+    uint32_t totalAccounts = 0;
+    read = unpack_variant32(accounts, accountsBufferLen, &totalAccounts);
+    accounts += read; accountsBufferLen -= read;
+    
+    uint32_t accountsArgStart = keysArgStart + totalKeys * 2;
+    
+    if (accountsArgStart < argNum && argNum <= accountsArgStart + totalAccounts * 2) {
+        for (uint8_t i = 0, argIndex = accountsArgStart + 1; i < totalAccounts; ++i, argIndex += 2) {
+            char label[32] = { 0 };
+            if (argIndex == argNum) {
+                snprintf(label, sizeof(label), "Account #%d", (i + 1));
+                parsePermissionField(accounts, accountsBufferLen, label, arg, &read, &written);
+                return;
+            }
+            
+            accounts += sizeof(permisssion_level_t); accountsBufferLen -= sizeof(permisssion_level_t);
+            
+            if (argIndex + 1 == argNum) {
+                snprintf(label, sizeof(label), "Account #%d Weight", (i + 1));
+                parseUint16Field(accounts, accountsBufferLen, label, arg, &read, &written);
+                return;
+            }
+            
+            accounts += sizeof(uint16_t); accountsBufferLen -= sizeof(uint16_t);
+        }
+    }
 }

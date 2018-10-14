@@ -192,3 +192,20 @@ void parseStringField(uint8_t *in, uint32_t inLength, const char fieldName[], ac
     *read = readFromBuffer + fieldLength;
     *written = fieldLength;
 }
+
+void parsePermissionField(uint8_t *in, uint32_t inLength, const char fieldName[], actionArgument_t *arg, uint32_t *read, uint32_t *written) {
+    uint32_t accountWrittenLength = 0;
+    
+    parseNameField(in, inLength, fieldName, arg, read, &accountWrittenLength);
+    strcat(arg->data, "@");
+    
+    in += *read; inLength -= *read;
+    if (inLength < sizeof(name_t)) {
+        PRINTF("parseActionData Insufficient buffer\n");
+        THROW(EXCEPTION);
+    }
+    name_t name = buffer_to_name_type(in, sizeof(name_t));
+    
+    *written = name_to_string(name, arg->data + accountWrittenLength + 1, sizeof(arg->data) - accountWrittenLength - 1) + accountWrittenLength;
+    *read += sizeof(name_t);
+}

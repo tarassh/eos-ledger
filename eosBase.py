@@ -199,7 +199,14 @@ class Transaction:
             parameters += Transaction.parse_public_key(key['key'])
             parameters += struct.pack('H', key['weight'])
         parameters += struct.pack('B', len(data['accounts']))
+        for account in data['accounts']:
+            parameters += Transaction.name_to_number(account['authorization']['actor'])
+            parameters += Transaction.name_to_number(account['authorization']['permission'])
+            parameters += struct.pack('H', account['weight'])
         parameters += struct.pack('B', len(data['waits']))
+        for wait in data['waits']:
+            parameters += struct.pack('L', wait['wait'])
+            parameters += struct.pack('H', account['weight'])
         return parameters
     
     @staticmethod

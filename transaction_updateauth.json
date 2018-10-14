@@ -30,15 +30,26 @@
                 "weight": 1
               },
               {
-                "key": "EOS8Dkj827FpinZBGmhTM28B85H9eXiFH5XzvLoeukCJV5sKfLc6K",
-                "weight": 2
-              },
-              {
-                "key": "EOS8Dkj827FpinZBGmhTM28B85H9eXiFH5XzvLoeukCJV5sKfLc6K",
-                "weight": 5
+                "key": "EOS5cujNHGMYZZ2tgByyNEUaoPLFhZVmGXbZc9BLJeQkKZFqGYEiQ",
+                "weight": 1
               }
             ],
-            "accounts": [],
+            "accounts": [
+              {
+                "authorization": {
+                  "actor": "cryptofairy5",
+                  "permission": "active"
+                },
+                "weight": 1
+              },
+              {
+                "authorization": {
+                  "actor": "b1",
+                  "permission": "owner"
+                },
+                "weight": 1
+              }
+            ],
             "waits": []
           }
         }

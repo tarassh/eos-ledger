@@ -37,6 +37,15 @@ void parseDelegateUndelegate(uint8_t *buffer, uint32_t bufferLength, uint8_t arg
     }
 }
 
+void parseRefund(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, actionArgument_t *arg) {
+    uint32_t read = 0;
+    uint32_t written = 0;
+
+    if (argNum == 0) {
+        parseNameField(buffer, bufferLength, "Account", arg, &read, &written);
+    }
+}
+
 void parseBuyRam(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, actionArgument_t *arg) {
     uint32_t read = 0;
     uint32_t written = 0;

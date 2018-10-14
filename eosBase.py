@@ -224,6 +224,10 @@ class Transaction:
         return parameters
 
     @staticmethod
+    def parse_refund(data):
+        return Transaction.name_to_number(data['account'])
+
+    @staticmethod
     def parse(json):
         tx = Transaction()
         tx.json = json
@@ -267,6 +271,8 @@ class Transaction:
             parameters = Transaction.parse_update_auth(data)
         elif action['name'] == 'deleteauth':
             parameters = Transaction.parse_delete_auth(data)
+        elif action['name'] == 'refund':
+            parameters = Transaction.parse_refund(data)
 
         tx.data_size = Transaction.pack_fc_uint(len(parameters))
         tx.data = parameters

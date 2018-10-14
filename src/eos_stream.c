@@ -37,6 +37,7 @@
 #define EOSIO_SELLRAM        0xC2A31B9A40000000
 #define EOSIO_UPDATE_AUTH    0xD5526CA8DACB4000
 #define EOSIO_DELETE_AUTH    0x4AA2ACA8DACB4000
+#define EOSIO_REFUND         0xBA97A9A400000000
 #define EOSIO_LINK_AUTH      0x8BA7036B2D000000
 #define EOSIO_UNLINK_AUTH    0xD4E2E9C0DACB4000
 
@@ -78,6 +79,10 @@ static void processTokenTransfer(txProcessingContext_t *context) {
 
 static void processEosioDelegateUndelegate(txProcessingContext_t *context) {
     context->content->activeBuffers = 4;
+}
+
+static void processEosioRefund(txProcessingContext_t *context) {
+    context->content->activeBuffers = 1;
 }
 
 static void processEosioBuyRam(txProcessingContext_t *context) {
@@ -159,6 +164,9 @@ void printArgument(uint8_t argNum, txProcessingContext_t *context) {
         case EOSIO_DELEGATEBW:
         case EOSIO_UNDELEGATEBW:
             parseDelegateUndelegate(buffer, bufferLength, argNum, arg);
+            break;
+        case EOSIO_REFUND:
+            parseRefund(buffer, bufferLength, argNum, arg);
             break;
         case EOSIO_BUYRAM:
             parseBuyRam(buffer, bufferLength, argNum, arg);
@@ -465,6 +473,9 @@ static void processActionData(txProcessingContext_t *context) {
         } else if (context->contractName == EOSIO && 
                    context->contractActionName == EOSIO_VOTEPRODUCER) {
             processEosioVoteProducer(context);
+        } else if (context->contractName == EOSIO && 
+                   context->contractActionName == EOSIO_REFUND) {
+            processEosioRefund(context);
         } else if (context->contractName == EOSIO && 
                   (context->contractActionName == EOSIO_BUYRAM ||
                    context->contractActionName == EOSIO_BUYRAMBYTES)) {

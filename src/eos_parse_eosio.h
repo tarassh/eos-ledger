@@ -26,5 +26,6 @@ void parseBuyRamBytes(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, ac
 void parseSellRam(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, actionArgument_t *arg);
 void parseVoteProducer(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, actionArgument_t *arg);
 void parseUpdateAuth(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, actionArgument_t *arg);
+void parseDeleteAuth(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, actionArgument_t *arg);
 
 #endif

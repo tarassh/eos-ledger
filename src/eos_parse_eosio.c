@@ -245,3 +245,19 @@ void parseUpdateAuth(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, act
         }
     }
 }
+
+void parseDeleteAuth(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, actionArgument_t *arg) {
+    uint32_t read = 0;
+    uint32_t written = 0;
+
+    if (argNum == 0) {
+        parseNameField(buffer, bufferLength, "Account", arg, &read, &written);
+        return;
+    } 
+    
+    if (argNum == 1) {
+        buffer += sizeof(name_t); bufferLength -= sizeof(name_t);
+        parseNameField(buffer, bufferLength, "Permission", arg, &read, &written);
+        return;
+    }
+}

@@ -112,3 +112,75 @@ void parseVoteProducer(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, a
     snprintf(label, sizeof(label) - 1, "Producer #%d [%d]", argNum, totalProducers);
     parseNameField(buffer, bufferLength, label, arg, &read, &written);
 }
+
+void parseUpdateAuth(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, actionArgument_t *arg) {
+    uint32_t read = 0;
+    uint32_t written = 0;
+
+    if (argNum == 0) {
+        parseNameField(buffer, bufferLength, "Account", arg, &read, &written);
+        return;
+    } 
+    
+    if (argNum == 1) {
+        buffer += sizeof(name_t); bufferLength -= sizeof(name_t);
+        parseNameField(buffer, bufferLength, "Permission", arg, &read, &written);
+        return;
+    }
+    
+    uint8_t *parentBuffer = buffer + 2 * sizeof(name_t);
+    name_t parent = 0;
+    os_memmove(&parent, parentBuffer, sizeof(name_t));
+    if (parent != 0 && argNum == 2) {
+        parseNameField(parentBuffer, sizeof(name_t), "Parent", arg, &read, &written);
+        return;
+    } else if (argNum == 2) {
+        uint8_t null[] = {4, 'N', 'U', 'L', 'L'};
+        parseStringField(null, sizeof(null), "Parent", arg, &read, &written);
+        return;
+    }
+
+    if (argNum == 3) {
+        buffer += 3 * sizeof(name_t); bufferLength -= 3 * sizeof(name_t); 
+        parseUint32Field(buffer, bufferLength, "Threshold", arg, &read, &written);
+        return;
+    }
+
+    uint8_t *keys = buffer += 3 * sizeof(name_t) + sizeof(uint32_t);
+    uint32_t keyBufferLength = bufferLength - 3 * sizeof(name_t) + sizeof(uint32_t);
+
+    uint32_t totalKeys = 0;
+    read = unpack_variant32(keys, keyBufferLength, &totalKeys);
+    keys += read; keyBufferLength -= read;
+    
+    uint8_t keysArgStart = 3;
+
+    if (keysArgStart < argNum && argNum <= keysArgStart + totalKeys * 2) {
+        for (uint8_t i = 0, argIndex = 4; i < totalKeys; ++i, argIndex += 2) {
+            
+            char label[14] = { 0 };
+            // Skip key Type
+            keys += 1; keyBufferLength -= 1;
+            
+            if (argIndex == argNum) {
+                snprintf(label, sizeof(label), "Key #%d", (i + 1));
+                parsePublicKeyField(keys, keyBufferLength, label, arg, &read, &written);
+                return;
+            }
+
+            keys += sizeof(public_key_t); keyBufferLength -= sizeof(public_key_t);
+
+            if (argIndex + 1 == argNum) {
+                snprintf(label, sizeof(label), "Key #%d Weight", (i + 1));
+                parseUint16Field(keys, keyBufferLength, label, arg, &read, &written);
+                return;
+            }
+
+            keys += sizeof(uint16_t); keyBufferLength -= sizeof(uint16_t);
+        }
+    }
+
+    const uint32_t keyStep = (1 + sizeof(public_key_t) + sizeof(uint16_t));
+    uint8_t *accounts = keys + keyStep * totalKeys;
+    uint32_t accountsBuffer = keyBufferLength - keyStep * totalKeys;
+}

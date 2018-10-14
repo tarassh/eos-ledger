@@ -177,6 +177,36 @@ static void processEosioVoteProducer(txProcessingContext_t *context) {
     context->content->activeBuffers += totalProducers;
 }
 
+static void processEosioUpdateAuth(txProcessingContext_t *context) {
+    uint32_t bufferLength = context->currentActionDataBufferLength;
+    uint8_t *buffer = context->actionDataBuffer;
+
+    context->content->activeBuffers = 4;
+
+    buffer += 3 * sizeof(name_t) + sizeof(uint32_t);
+    bufferLength -= 3 * sizeof(name_t) + sizeof(uint32_t);
+
+    uint32_t totalKeys = 0;
+    uint32_t read = unpack_variant32(buffer, bufferLength, &totalKeys);
+    context->content->activeBuffers += totalKeys * 2;
+
+    // keys data begins here
+    buffer += read; bufferLength -= read;
+    buffer += (1 + sizeof(public_key_t) + sizeof(uint16_t)) * totalKeys;
+
+    uint32_t totalAccounts = 0;
+    read = unpack_variant32(buffer, bufferLength, &totalAccounts);
+    context->content->activeBuffers += totalAccounts * 2;
+
+    // accounts data begins here
+    buffer += read; bufferLength -= read;
+    buffer += (sizeof(permisssion_level_t) + sizeof(uint16_t)) * totalAccounts;
+
+    uint32_t totalWaits = 0;
+    read = unpack_variant32(buffer, bufferLength, &totalWaits);
+    context->content->activeBuffers += totalWaits * 2; 
+}
+
 // static void parseEosioUpdateAuth(txProcessingContext_t *context, bool delete) {
 //     uint32_t bufferLength = context->currentActionDataBufferLength;
 //     uint8_t *buffer = context->actionDataBuffer;
@@ -346,6 +376,9 @@ void printArgument(uint8_t argNum, txProcessingContext_t *context) {
             break;
         case EOSIO_VOTEPRODUCER:
             parseVoteProducer(buffer, bufferLength, argNum, arg);
+            break;
+        case EOSIO_UPDATE_AUTH:
+            parseUpdateAuth(buffer, bufferLength, argNum, arg);
             break;
         }
     }
@@ -643,7 +676,7 @@ static void processActionData(txProcessingContext_t *context) {
             processEosioSellRam(context);
         } else if (context->contractName == EOSIO &&
                    context->contractActionName == EOSIO_UPDATE_AUTH) {
-            // parseEosioUpdateAuth(context, false);
+            processEosioUpdateAuth(context);
         } else if (context->contractName == EOSIO &&
                    context->contractActionName == EOSIO_DELETE_AUTH) {
             // parseEosioUpdateAuth(context, true);

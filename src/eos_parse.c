@@ -19,6 +19,7 @@
 #include "os.h"
 #include "cx.h"
 #include "eos_types.h"
+#include <stdbool.h>
 
 void parseNameField(uint8_t *in, uint32_t inLength, const char fieldName[], actionArgument_t *arg, uint32_t *read, uint32_t *written) {
     if (inLength < sizeof(name_t)) {
@@ -61,6 +62,29 @@ void parsePublicKeyField(uint8_t *in, uint32_t inLength, const char fieldName[],
 
     *read = 33;
     *written = writtenToBuff;
+}
+
+void parseUint16Field(uint8_t *in, uint32_t inLength, const char fieldName[], actionArgument_t *arg, uint32_t *read, uint32_t *written) {
+    if (inLength < sizeof(uint16_t)) {
+        PRINTF("parseActionData Insufficient buffer\n");
+        THROW(EXCEPTION);
+    }
+    uint32_t labelLength = strlen(fieldName);
+    if (labelLength > sizeof(arg->label)) {
+        PRINTF("parseActionData Label too long\n");
+        THROW(EXCEPTION);
+    }
+    
+    os_memset(arg->label, 0, sizeof(arg->label));
+    os_memset(arg->data, 0, sizeof(arg->data));
+    
+    os_memmove(arg->label, fieldName, labelLength);
+    uint16_t value;
+    os_memmove(&value, in, sizeof(uint16_t));
+    snprintf(arg->data, sizeof(arg->data)-1, "%d", value);
+    
+    *read = sizeof(uint16_t);
+    *written = strlen(arg->data);
 }
 
 void parseUint32Field(uint8_t *in, uint32_t inLength, const char fieldName[], actionArgument_t *arg, uint32_t *read, uint32_t *written) {

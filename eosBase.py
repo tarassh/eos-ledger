@@ -205,8 +205,8 @@ class Transaction:
             parameters += struct.pack('H', account['weight'])
         parameters += struct.pack('B', len(data['waits']))
         for wait in data['waits']:
-            parameters += struct.pack('L', wait['wait'])
-            parameters += struct.pack('H', account['weight'])
+            parameters += struct.pack('I', wait['wait'])
+            parameters += struct.pack('H', wait['weight'])
         return parameters
     
     @staticmethod

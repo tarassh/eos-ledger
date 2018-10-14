@@ -50,7 +50,16 @@
                 "weight": 1
               }
             ],
-            "waits": []
+            "waits": [
+              {
+                "wait": 40,
+                "weight": 4
+              },
+              {
+                "wait": 12,
+                "weight": 2
+              }
+            ]
           }
         }
       }

@@ -211,4 +211,37 @@ void parseUpdateAuth(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, act
             accounts += sizeof(uint16_t); accountsBufferLen -= sizeof(uint16_t);
         }
     }
+
+    // Delays
+    const uint32_t accountStep = sizeof(permisssion_level_t) + sizeof(uint16_t);
+    uint8_t *delays = accounts + accountStep * totalAccounts;
+    uint32_t delayBufferLen = accountsBufferLen - accountStep * totalAccounts;
+
+    uint32_t totalDelays = 0;
+    read = unpack_variant32(delays, delayBufferLen, &totalDelays);
+    delays += read; delayBufferLen -= read;
+    
+    uint32_t delaysArgStart = keysArgStart + totalKeys * 2 + totalAccounts * 2;
+
+    if (delaysArgStart < argNum && argNum <= delaysArgStart + totalDelays * 2) {
+        for (uint8_t i = 0, argIndex = delaysArgStart + 1; i < totalDelays; ++i, argIndex += 2) {
+            char label[32] = { 0 };
+
+            if (argIndex == argNum) {
+                snprintf(label, sizeof(label), "Delay #%d", (i + 1));
+                parseUint32Field(delays, delayBufferLen, label, arg, &read, &written);
+                return;
+            }
+            
+            delays += sizeof(uint32_t); delayBufferLen -= sizeof(uint32_t);
+            
+            if (argIndex + 1 == argNum) {
+                snprintf(label, sizeof(label), "Delay #%d Weight", (i + 1));
+                parseUint16Field(delays, delayBufferLen, label, arg, &read, &written);
+                return;
+            }
+            
+            delays += sizeof(uint16_t); delayBufferLen -= sizeof(uint16_t);
+        }
+    }
 }

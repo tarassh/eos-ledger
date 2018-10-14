@@ -11,6 +11,9 @@
 		67094462211E2AB900B8C05E /* eos_utils.c in Sources */ = {isa = PBXBuildFile; fileRef = 6709445D211E2AB900B8C05E /* eos_utils.c */; };
 		67094463211E2AB900B8C05E /* eos_stream.c in Sources */ = {isa = PBXBuildFile; fileRef = 6709445E211E2AB900B8C05E /* eos_stream.c */; };
 		67094464211E2AB900B8C05E /* eos_types.c in Sources */ = {isa = PBXBuildFile; fileRef = 6709445F211E2AB900B8C05E /* eos_types.c */; };
+		673E26FB217333930028C96F /* eos_parse_eosio.c in Sources */ = {isa = PBXBuildFile; fileRef = 673E26F5217333920028C96F /* eos_parse_eosio.c */; };
+		673E26FC217333930028C96F /* eos_parse.c in Sources */ = {isa = PBXBuildFile; fileRef = 673E26F6217333920028C96F /* eos_parse.c */; };
+		673E26FD217333930028C96F /* eos_parse_token.c in Sources */ = {isa = PBXBuildFile; fileRef = 673E26FA217333930028C96F /* eos_parse_token.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -36,6 +39,12 @@
 		67094461211E2AB900B8C05E /* eos_utils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = eos_utils.h; path = ../src/eos_utils.h; sourceTree = "<group>"; };
 		67094465211E2CC200B8C05E /* os.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = os.h; sourceTree = "<group>"; };
 		67094466211E2D1100B8C05E /* cx.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = cx.h; sourceTree = "<group>"; };
+		673E26F5217333920028C96F /* eos_parse_eosio.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = eos_parse_eosio.c; path = ../src/eos_parse_eosio.c; sourceTree = "<group>"; };
+		673E26F6217333920028C96F /* eos_parse.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = eos_parse.c; path = ../src/eos_parse.c; sourceTree = "<group>"; };
+		673E26F7217333930028C96F /* eos_parse.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = eos_parse.h; path = ../src/eos_parse.h; sourceTree = "<group>"; };
+		673E26F8217333930028C96F /* eos_parse_eosio.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = eos_parse_eosio.h; path = ../src/eos_parse_eosio.h; sourceTree = "<group>"; };
+		673E26F9217333930028C96F /* eos_parse_token.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = eos_parse_token.h; path = ../src/eos_parse_token.h; sourceTree = "<group>"; };
+		673E26FA217333930028C96F /* eos_parse_token.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = eos_parse_token.c; path = ../src/eos_parse_token.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -52,6 +61,12 @@
 		67094449211E2A6B00B8C05E = {
 			isa = PBXGroup;
 			children = (
+				673E26F5217333920028C96F /* eos_parse_eosio.c */,
+				673E26F8217333930028C96F /* eos_parse_eosio.h */,
+				673E26FA217333930028C96F /* eos_parse_token.c */,
+				673E26F9217333930028C96F /* eos_parse_token.h */,
+				673E26F6217333920028C96F /* eos_parse.c */,
+				673E26F7217333930028C96F /* eos_parse.h */,
 				6709445E211E2AB900B8C05E /* eos_stream.c */,
 				6709445C211E2AB900B8C05E /* eos_stream.h */,
 				6709445F211E2AB900B8C05E /* eos_types.c */,
@@ -137,10 +152,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				673E26FD217333930028C96F /* eos_parse_token.c in Sources */,
 				67094456211E2A6C00B8C05E /* main.c in Sources */,
+				673E26FB217333930028C96F /* eos_parse_eosio.c in Sources */,
 				67094463211E2AB900B8C05E /* eos_stream.c in Sources */,
 				67094462211E2AB900B8C05E /* eos_utils.c in Sources */,
 				67094464211E2AB900B8C05E /* eos_types.c in Sources */,
+				673E26FC217333930028C96F /* eos_parse.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

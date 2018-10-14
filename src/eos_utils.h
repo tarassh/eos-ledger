@@ -21,9 +21,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-unsigned char buffer_to_encoded_base58(unsigned char *in, unsigned char length,
-                         char *out,
-                         unsigned char maxoutlen);
+bool b58enc(uint8_t *data, uint32_t binsz, char *b58, uint32_t *b58sz);
 
 void array_hexstr(char *strbuf, const void *bin, unsigned int len);
 

@@ -71,7 +71,7 @@ bool b58enc(uint8_t *bin, uint32_t binsz, char *b58, uint32_t *b58sz)
 }
 
 unsigned char const hex_digits[] = {'0', '1', '2', '3', '4', '5', '6', '7',
-                                    '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+                                    '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
 void array_hexstr(char *strbuf, const void *bin, unsigned int len) {
     while (len--) {

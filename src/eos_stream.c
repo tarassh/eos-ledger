@@ -44,14 +44,17 @@
 
 void initTxContext(txProcessingContext_t *context, 
                    cx_sha256_t *sha256, 
+                   cx_sha256_t *dataSha256, 
                    txProcessingContent_t *processingContent,
                    uint8_t dataAllowed) {
     os_memset(context, 0, sizeof(txProcessingContext_t));
     context->sha256 = sha256;
+    context->dataSha256 = dataSha256;
     context->content = processingContent;
     context->state = TLV_CHAIN_ID;
     context->dataAllowed = dataAllowed;
     cx_sha256_init(context->sha256);
+    cx_sha256_init(context->dataSha256);
 }
 
 uint8_t readTxByte(txProcessingContext_t *context) {
@@ -159,7 +162,9 @@ static void processEosioUnlinkAuth(txProcessingContext_t *context) {
 }
 
 static void processUnknownAction(txProcessingContext_t *context) {
-    context->content->argumentCount = 2;  
+    cx_hash(&context->dataSha256->header, CX_LAST, context->dataChecksum, 0,
+            context->dataChecksum);
+    context->content->argumentCount = 3;  
 }
 
 void printArgument(uint8_t argNum, txProcessingContext_t *context) {
@@ -209,14 +214,14 @@ void printArgument(uint8_t argNum, txProcessingContext_t *context) {
             break;
         default:
             if (context->dataAllowed == 1) {
-                parseUnknownAction(buffer, bufferLength, argNum, arg);
+                parseUnknownAction(context->dataChecksum, sizeof(context->dataChecksum), argNum, arg);
             }
         }
         return;
     }
     
     if (context->dataAllowed == 1) {
-        parseUnknownAction(buffer, bufferLength, argNum, arg);
+        parseUnknownAction(context->dataChecksum, sizeof(context->dataChecksum), argNum, arg);
     }
 }
 
@@ -253,6 +258,10 @@ static bool isKnownAction(txProcessingContext_t *context) {
 */
 static void hashTxData(txProcessingContext_t *context, uint8_t *buffer, uint32_t length) {
     cx_hash(&context->sha256->header, 0, buffer, length, NULL);
+}
+
+static void hashActionData(txProcessingContext_t *context, uint8_t *buffer, uint32_t length) {
+    cx_hash(&context->dataSha256->header, 0, buffer, length, NULL);
 }
 
 /**
@@ -505,7 +514,7 @@ static void processUnknownActionData(txProcessingContext_t *context) {
                 : context->currentFieldLength - context->currentFieldPos);
 
         hashTxData(context, context->workBuffer, length);
-        // TODO: calculate checksum
+        hashActionData(context, context->workBuffer, length);
 
         context->workBuffer += length;
         context->commandLength -= length;

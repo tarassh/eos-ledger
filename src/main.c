@@ -79,6 +79,7 @@ typedef struct transactionContext_t
 } transactionContext_t;
 
 cx_sha256_t sha256;
+cx_sha256_t dataSha256;
 
 union {
     publicKeyContext_t publicKeyContext;
@@ -723,7 +724,7 @@ void handleSign(uint8_t p1, uint8_t p2, uint8_t *workBuffer,
             dataLength -= 4;
         }
         dataPresent = false;
-        initTxContext(&txProcessingCtx, &sha256, &txContent, N_storage.dataAllowed);
+        initTxContext(&txProcessingCtx, &sha256, &dataSha256, &txContent, N_storage.dataAllowed);
     }
     else if (p1 != P1_MORE)
     {

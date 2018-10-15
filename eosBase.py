@@ -23,6 +23,7 @@ from datetime import datetime
 import struct
 import binascii
 from base58 import b58decode 
+import hashlib
 
 
 class Transaction:
@@ -245,8 +246,7 @@ class Transaction:
     @staticmethod
     def parse_unknown(data):
         data = data * 1000
-        parameters = Transaction.pack_fc_uint(len(data))
-        parameters += struct.pack(str(len(data)) + 's', str(data))
+        parameters = struct.pack(str(len(data)) + 's', str(data))
         return parameters
 
     @staticmethod
@@ -306,6 +306,10 @@ class Transaction:
         tx.data = parameters
         tx.tx_ext = struct.pack('B', len(body['transaction_extensions']))
         tx.cfd = binascii.unhexlify('00' * 32)
+
+        sha = hashlib.sha256()
+        sha.update(tx.data)
+        print 'Argument checksum ' +  sha.hexdigest()
 
         return tx
 

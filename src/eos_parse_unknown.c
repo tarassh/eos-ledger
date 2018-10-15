@@ -35,5 +35,9 @@ void parseUnknownAction(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, 
         printString("Arbitrary Data", "WARNING", arg);
     } else if (argNum == 1) {
         printString("Signing may be dangerous and on your own risk", "WARNING", arg);
+    } else if (argNum == 2) {
+        char checksum[65] = { 0 };
+        array_hexstr(checksum, buffer, bufferLength);
+        printString(checksum, "Checksum", arg);
     }
 }

@@ -243,6 +243,12 @@ class Transaction:
         return parameters
 
     @staticmethod
+    def parse_unknown(data):
+        parameters = struct.pack('B', len(data))
+        parameters += struct.pack(str(len(data)) + 's', str(data))
+        return parameters
+
+    @staticmethod
     def parse(json):
         tx = Transaction()
         tx.json = json
@@ -292,6 +298,8 @@ class Transaction:
             parameters = Transaction.parse_link_auth(data)
         elif action['name'] == 'unlinkauth':
             parameters = Transaction.parse_unlink_auth(data)
+        else:
+            parameters = Transaction.parse_unknown(data)
 
         tx.data_size = Transaction.pack_fc_uint(len(parameters))
         tx.data = parameters

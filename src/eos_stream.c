@@ -24,6 +24,7 @@
 #include "eos_parse.h"
 #include "eos_parse_token.h"
 #include "eos_parse_eosio.h"
+#include "eos_parse_unknown.h"
 
 #define EOSIO_TOKEN          0x5530EA033482A600
 #define EOSIO_TOKEN_TRANSFER 0xCDCD3C2D57000000
@@ -43,11 +44,13 @@
 
 void initTxContext(txProcessingContext_t *context, 
                    cx_sha256_t *sha256, 
-                   txProcessingContent_t *processingContent) {
+                   txProcessingContent_t *processingContent,
+                   uint8_t dataAllowed) {
     os_memset(context, 0, sizeof(txProcessingContext_t));
     context->sha256 = sha256;
     context->content = processingContent;
     context->state = TLV_CHAIN_ID;
+    context->dataAllowed = dataAllowed;
     cx_sha256_init(context->sha256);
 }
 
@@ -64,7 +67,7 @@ uint8_t readTxByte(txProcessingContext_t *context) {
 }
 
 static void processTokenTransfer(txProcessingContext_t *context) {
-    context->content->activeBuffers = 3;
+    context->content->argumentCount = 3;
     uint32_t bufferLength = context->currentActionDataBufferLength;
     uint8_t *buffer = context->actionDataBuffer;
 
@@ -73,58 +76,58 @@ static void processTokenTransfer(txProcessingContext_t *context) {
     uint32_t memoLength = 0;
     unpack_variant32(buffer, bufferLength, &memoLength);
     if (memoLength > 0) {
-        context->content->activeBuffers++;
+        context->content->argumentCount++;
     }
 }
 
 static void processEosioDelegateUndelegate(txProcessingContext_t *context) {
-    context->content->activeBuffers = 4;
+    context->content->argumentCount = 4;
 }
 
 static void processEosioRefund(txProcessingContext_t *context) {
-    context->content->activeBuffers = 1;
+    context->content->argumentCount = 1;
 }
 
 static void processEosioBuyRam(txProcessingContext_t *context) {
-    context->content->activeBuffers = 3;
+    context->content->argumentCount = 3;
 }
 
 static void processEosioSellRam(txProcessingContext_t *context) {
-    context->content->activeBuffers = 2;
+    context->content->argumentCount = 2;
 }
 
 static void processEosioVoteProducer(txProcessingContext_t *context) {
     uint32_t bufferLength = context->currentActionDataBufferLength;
     uint8_t *buffer = context->actionDataBuffer;
 
-    context->content->activeBuffers = 1;
+    context->content->argumentCount = 1;
     buffer += sizeof(name_t);
 
     name_t proxy = 0;
     os_memmove(&proxy, buffer, sizeof(name_t));
     if (proxy != 0) {
-        context->content->activeBuffers++;
+        context->content->argumentCount++;
         return;
     }
     buffer += sizeof(name_t);
 
     uint32_t totalProducers = 0;
     unpack_variant32(buffer, bufferLength, &totalProducers);
-    context->content->activeBuffers += totalProducers;
+    context->content->argumentCount += totalProducers;
 }
 
 static void processEosioUpdateAuth(txProcessingContext_t *context) {
     uint32_t bufferLength = context->currentActionDataBufferLength;
     uint8_t *buffer = context->actionDataBuffer;
 
-    context->content->activeBuffers = 4;
+    context->content->argumentCount = 4;
 
     buffer += 3 * sizeof(name_t) + sizeof(uint32_t);
     bufferLength -= 3 * sizeof(name_t) + sizeof(uint32_t);
 
     uint32_t totalKeys = 0;
     uint32_t read = unpack_variant32(buffer, bufferLength, &totalKeys);
-    context->content->activeBuffers += totalKeys * 2;
+    context->content->argumentCount += totalKeys * 2;
 
     // keys data begins here
     buffer += read; bufferLength -= read;
@@ -132,7 +135,7 @@ static void processEosioUpdateAuth(txProcessingContext_t *context) {
 
     uint32_t totalAccounts = 0;
     read = unpack_variant32(buffer, bufferLength, &totalAccounts);
-    context->content->activeBuffers += totalAccounts * 2;
+    context->content->argumentCount += totalAccounts * 2;
 
     // accounts data begins here
     buffer += read; bufferLength -= read;
@@ -140,19 +143,23 @@ static void processEosioUpdateAuth(txProcessingContext_t *context) {
 
     uint32_t totalWaits = 0;
     read = unpack_variant32(buffer, bufferLength, &totalWaits);
-    context->content->activeBuffers += totalWaits * 2; 
+    context->content->argumentCount += totalWaits * 2; 
 }
 
 static void processEosioDeleteAuth(txProcessingContext_t *context) {
-    context->content->activeBuffers = 2;  
+    context->content->argumentCount = 2;  
 }
 
 static void processEosioLinkAuth(txProcessingContext_t *context) {
-    context->content->activeBuffers = 4;  
+    context->content->argumentCount = 4;  
 }
 
 static void processEosioUnlinkAuth(txProcessingContext_t *context) {
-    context->content->activeBuffers = 3;  
+    context->content->argumentCount = 3;  
+}
+
+static void processUnknownAction(txProcessingContext_t *context) {
+    context->content->argumentCount = 2;  
 }
 
 void printArgument(uint8_t argNum, txProcessingContext_t *context) {
@@ -201,9 +208,15 @@ void printArgument(uint8_t argNum, txProcessingContext_t *context) {
             parseUnlinkAuth(buffer, bufferLength, argNum, arg);
             break;
         default:
-            // TODO: parse UNKNOWN Actions
-            break;
+            if (context->dataAllowed == 1) {
+                parseUnknownAction(buffer, bufferLength, argNum, arg);
+            }
         }
+        return;
+    }
+    
+    if (context->dataAllowed == 1) {
+        parseUnknownAction(buffer, bufferLength, argNum, arg);
     }
 }
 
@@ -513,8 +526,12 @@ static void processActionData(txProcessingContext_t *context) {
                    context->contractActionName == EOSIO_UNLINK_AUTH) {
             processEosioUnlinkAuth(context);
         } else {
-            // TODO: process unknown action
-            THROW(EXCEPTION);
+            if (context->dataAllowed == 1) {
+                processUnknownAction(context);
+            } else {
+                THROW(EXCEPTION);
+            }
+            
         }
         context->state = TLV_TX_EXTENSION_LIST_SIZE;
         context->processingField = false;

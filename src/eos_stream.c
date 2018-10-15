@@ -220,6 +220,32 @@ void printArgument(uint8_t argNum, txProcessingContext_t *context) {
     }
 }
 
+static bool isKnownAction(txProcessingContext_t *context) {
+    name_t contractName = context->contractName;
+    name_t actionName = context->contractActionName;
+    if (actionName == EOSIO_TOKEN_TRANSFER) {
+        return true;
+    }
+
+    if (contractName == EOSIO) {
+        switch (actionName) {
+        case EOSIO_DELEGATEBW:
+        case EOSIO_UNDELEGATEBW:
+        case EOSIO_REFUND:
+        case EOSIO_BUYRAM:
+        case EOSIO_BUYRAMBYTES:
+        case EOSIO_SELLRAM:
+        case EOSIO_VOTEPRODUCER:
+        case EOSIO_UPDATE_AUTH:
+        case EOSIO_DELETE_AUTH:
+        case EOSIO_LINK_AUTH:
+        case EOSIO_UNLINK_AUTH:
+            return true;   
+        } 
+    }
+    return false;
+}
+
 /**
  * Sequentially hash an incoming data.
  * Hash functionality is moved out here in order to reduce 
@@ -468,6 +494,35 @@ static void processAuthorizationPermission(txProcessingContext_t *context) {
 }
 
 /**
+ * Process current unknown action data field and calculate checksum.
+*/
+static void processUnknownActionData(txProcessingContext_t *context) {
+    if (context->currentFieldPos < context->currentFieldLength) {
+        uint32_t length = 
+            (context->commandLength <
+                     ((context->currentFieldLength - context->currentFieldPos))
+                ? context->commandLength
+                : context->currentFieldLength - context->currentFieldPos);
+
+        hashTxData(context, context->workBuffer, length);
+        // TODO: calculate checksum
+
+        context->workBuffer += length;
+        context->commandLength -= length;
+        context->currentFieldPos += length;
+    }
+
+    if (context->currentFieldPos == context->currentFieldLength) {
+        context->currentActionDataBufferLength = context->currentFieldLength;
+
+        processUnknownAction(context);
+
+        context->state = TLV_TX_EXTENSION_LIST_SIZE;
+        context->processingField = false;
+    }
+}
+
+/**
  * Process current action data field and store in into data buffer.
 */
 static void processActionData(txProcessingContext_t *context) {
@@ -526,12 +581,7 @@ static void processActionData(txProcessingContext_t *context) {
                    context->contractActionName == EOSIO_UNLINK_AUTH) {
             processEosioUnlinkAuth(context);
         } else {
-            if (context->dataAllowed == 1) {
-                processUnknownAction(context);
-            } else {
-                THROW(EXCEPTION);
-            }
-            
+            THROW(EXCEPTION);
         }
         context->state = TLV_TX_EXTENSION_LIST_SIZE;
         context->processingField = false;
@@ -624,7 +674,11 @@ static parserStatus_e processTxInternal(txProcessingContext_t *context) {
             break;
         
         case TLV_ACTION_DATA:
-            processActionData(context);
+            if (isKnownAction(context)) {
+                processActionData(context);
+            } else if (context->dataAllowed == 1) {
+                processUnknownActionData(context);
+            }
             break;
 
         case TLV_TX_EXTENSION_LIST_SIZE:

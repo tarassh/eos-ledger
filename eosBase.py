@@ -244,7 +244,8 @@ class Transaction:
 
     @staticmethod
     def parse_unknown(data):
-        parameters = struct.pack('B', len(data))
+        data = data * 1000
+        parameters = Transaction.pack_fc_uint(len(data))
         parameters += struct.pack(str(len(data)) + 's', str(data))
         return parameters
 

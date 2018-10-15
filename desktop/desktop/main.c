@@ -60,7 +60,7 @@ int main(int argc, const char * argv[]) {
     uint8_t buffer[strlen(tx)/2];
     hex_to_bytes(tx, strlen(tx), buffer, sizeof(buffer));
     
-    initTxContext(&txProcessingCtx, &sha256, &txContent, 1);
+    initTxContext(&txProcessingCtx, &sha256, &txContent, 0);
     parseTx(&txProcessingCtx, buffer, sizeof(buffer));
     
     for (uint8_t i = 0; i < txProcessingCtx.content->argumentCount; ++i) {

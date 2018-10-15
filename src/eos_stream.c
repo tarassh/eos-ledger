@@ -678,6 +678,9 @@ static parserStatus_e processTxInternal(txProcessingContext_t *context) {
                 processActionData(context);
             } else if (context->dataAllowed == 1) {
                 processUnknownActionData(context);
+            } else {
+                PRINTF("UNKNOWN ACTION");
+                THROW(EXCEPTION);
             }
             break;
 

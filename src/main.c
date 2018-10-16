@@ -79,6 +79,7 @@ typedef struct transactionContext_t
 } transactionContext_t;
 
 cx_sha256_t sha256;
+cx_sha256_t dataSha256;
 
 union {
     publicKeyContext_t publicKeyContext;
@@ -143,7 +144,7 @@ const ux_menu_entry_t menu_settings_data[] = {
     UX_MENU_END};
 
 const ux_menu_entry_t menu_settings[] = {
-    // {NULL, menu_settings_data_init, 0, NULL, "Arbitrary data", NULL, 0, 0},
+    {NULL, menu_settings_data_init, 0, NULL, "Arbitrary data", NULL, 0, 0},
     {menu_main, NULL, 1, &C_icon_back, "Back", NULL, 61, 40},
     UX_MENU_END};
 #endif // HAVE_U2F
@@ -723,7 +724,7 @@ void handleSign(uint8_t p1, uint8_t p2, uint8_t *workBuffer,
             dataLength -= 4;
         }
         dataPresent = false;
-        initTxContext(&txProcessingCtx, &sha256, &txContent);
+        initTxContext(&txProcessingCtx, &sha256, &dataSha256, &txContent, N_storage.dataAllowed);
     }
     else if (p1 != P1_MORE)
     {
@@ -758,7 +759,7 @@ void handleSign(uint8_t p1, uint8_t p2, uint8_t *workBuffer,
 
     skipWarning = !dataPresent;
     ux_step = 0;
-    ux_step_count = 3 + txContent.activeBuffers;
+    ux_step_count = 3 + txContent.argumentCount;
     UX_DISPLAY(ui_approval_nanos, ui_approval_prepro);
 
     *flags |= IO_ASYNCH_REPLY;

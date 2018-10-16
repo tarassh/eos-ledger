@@ -23,6 +23,7 @@ from datetime import datetime
 import struct
 import binascii
 from base58 import b58decode 
+import hashlib
 
 
 class Transaction:
@@ -243,6 +244,12 @@ class Transaction:
         return parameters
 
     @staticmethod
+    def parse_unknown(data):
+        data = data * 1000
+        parameters = struct.pack(str(len(data)) + 's', str(data))
+        return parameters
+
+    @staticmethod
     def parse(json):
         tx = Transaction()
         tx.json = json
@@ -292,11 +299,17 @@ class Transaction:
             parameters = Transaction.parse_link_auth(data)
         elif action['name'] == 'unlinkauth':
             parameters = Transaction.parse_unlink_auth(data)
+        else:
+            parameters = Transaction.parse_unknown(data)
 
         tx.data_size = Transaction.pack_fc_uint(len(parameters))
         tx.data = parameters
         tx.tx_ext = struct.pack('B', len(body['transaction_extensions']))
         tx.cfd = binascii.unhexlify('00' * 32)
+
+        sha = hashlib.sha256()
+        sha.update(tx.data)
+        print 'Argument checksum ' +  sha.hexdigest()
 
         return tx
 

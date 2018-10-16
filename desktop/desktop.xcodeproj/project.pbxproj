@@ -14,6 +14,7 @@
 		673E26FB217333930028C96F /* eos_parse_eosio.c in Sources */ = {isa = PBXBuildFile; fileRef = 673E26F5217333920028C96F /* eos_parse_eosio.c */; };
 		673E26FC217333930028C96F /* eos_parse.c in Sources */ = {isa = PBXBuildFile; fileRef = 673E26F6217333920028C96F /* eos_parse.c */; };
 		673E26FD217333930028C96F /* eos_parse_token.c in Sources */ = {isa = PBXBuildFile; fileRef = 673E26FA217333930028C96F /* eos_parse_token.c */; };
+		673E2700217517A50028C96F /* eos_parse_unknown.c in Sources */ = {isa = PBXBuildFile; fileRef = 673E26FE217517A50028C96F /* eos_parse_unknown.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -45,6 +46,8 @@
 		673E26F8217333930028C96F /* eos_parse_eosio.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = eos_parse_eosio.h; path = ../src/eos_parse_eosio.h; sourceTree = "<group>"; };
 		673E26F9217333930028C96F /* eos_parse_token.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = eos_parse_token.h; path = ../src/eos_parse_token.h; sourceTree = "<group>"; };
 		673E26FA217333930028C96F /* eos_parse_token.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = eos_parse_token.c; path = ../src/eos_parse_token.c; sourceTree = "<group>"; };
+		673E26FE217517A50028C96F /* eos_parse_unknown.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = eos_parse_unknown.c; path = ../src/eos_parse_unknown.c; sourceTree = "<group>"; };
+		673E26FF217517A50028C96F /* eos_parse_unknown.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = eos_parse_unknown.h; path = ../src/eos_parse_unknown.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -61,6 +64,8 @@
 		67094449211E2A6B00B8C05E = {
 			isa = PBXGroup;
 			children = (
+				673E26FE217517A50028C96F /* eos_parse_unknown.c */,
+				673E26FF217517A50028C96F /* eos_parse_unknown.h */,
 				673E26F5217333920028C96F /* eos_parse_eosio.c */,
 				673E26F8217333930028C96F /* eos_parse_eosio.h */,
 				673E26FA217333930028C96F /* eos_parse_token.c */,
@@ -156,6 +161,7 @@
 				67094456211E2A6C00B8C05E /* main.c in Sources */,
 				673E26FB217333930028C96F /* eos_parse_eosio.c in Sources */,
 				67094463211E2AB900B8C05E /* eos_stream.c in Sources */,
+				673E2700217517A50028C96F /* eos_parse_unknown.c in Sources */,
 				67094462211E2AB900B8C05E /* eos_utils.c in Sources */,
 				67094464211E2AB900B8C05E /* eos_types.c in Sources */,
 				673E26FC217333930028C96F /* eos_parse.c in Sources */,

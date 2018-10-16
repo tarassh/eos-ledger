@@ -517,6 +517,30 @@ static void processAuthorizationPermission(txProcessingContext_t *context) {
     }
 }
 
+
+static void processUnknownActionDataSize(txProcessingContext_t *context) {
+    if (context->currentFieldPos < context->currentFieldLength) {
+        uint32_t length = 
+            (context->commandLength <
+                     ((context->currentFieldLength - context->currentFieldPos))
+                ? context->commandLength
+                : context->currentFieldLength - context->currentFieldPos);
+
+        hashTxData(context, context->workBuffer, length);
+        hashActionData(context, context->workBuffer, length);
+
+        context->workBuffer += length;
+        context->commandLength -= length;
+        context->currentFieldPos += length;
+    }
+
+    if (context->currentFieldPos == context->currentFieldLength) {
+        context->state++;
+        context->processingField = false;
+    }
+}
+
+
 /**
  * Process current unknown action data field and calculate checksum.
 */
@@ -696,7 +720,11 @@ static parserStatus_e processTxInternal(txProcessingContext_t *context) {
             break;
         
         case TLV_ACTION_DATA_SIZE:
-            processField(context);
+            if (isKnownAction(context) || context->dataAllowed == 0) {
+                processField(context);
+            } else {
+                processUnknownActionDataSize(context);
+            }
             break;
         
         case TLV_ACTION_DATA:

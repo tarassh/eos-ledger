@@ -308,6 +308,7 @@ class Transaction:
         tx.cfd = binascii.unhexlify('00' * 32)
 
         sha = hashlib.sha256()
+        sha.update(tx.data_size)
         sha.update(tx.data)
         print 'Argument checksum ' +  sha.hexdigest()
 

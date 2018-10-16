@@ -108,7 +108,7 @@ class Transaction:
         parameters += Transaction.name_to_number(data['to'])
         parameters += Transaction.asset_to_number(data['quantity'])
         memo = data['memo']
-        parameters += struct.pack('B', len(memo))
+        parameters += Transaction.pack_fc_uint(len(memo))
         if len(memo) > 0:
             parameters += struct.pack(str(len(memo)) + 's', str(data['memo']))
 

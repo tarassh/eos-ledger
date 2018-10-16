@@ -28,7 +28,7 @@ typedef struct txProcessingContent_t {
     char argumentCount;
     char contract[14];
     char action[14];
-    actionArgument_t arg0;
+    actionArgument_t arg;
 } txProcessingContent_t;
 
 typedef enum txProcessingState_e {

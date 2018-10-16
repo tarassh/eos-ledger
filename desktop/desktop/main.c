@@ -65,8 +65,8 @@ int main(int argc, const char * argv[]) {
     
     for (uint8_t i = 0; i < txProcessingCtx.content->argumentCount; ++i) {
         printArgument(i, &txProcessingCtx);
-        puts(txContent.arg0.label);
-        puts(txContent.arg0.data);
+        puts(txContent.arg.label);
+        puts(txContent.arg.data);
         
         puts("\n");
     }

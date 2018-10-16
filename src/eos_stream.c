@@ -185,7 +185,7 @@ void printArgument(uint8_t argNum, txProcessingContext_t *context) {
     name_t actionName = context->contractActionName;
     uint8_t *buffer = context->actionDataBuffer;
     uint32_t bufferLength = context->currentActionDataBufferLength;
-    actionArgument_t *arg =  &context->content->arg0;
+    actionArgument_t *arg =  &context->content->arg;
 
     if (actionName == EOSIO_TOKEN_TRANSFER) {
         parseTokenTransfer(buffer, bufferLength, argNum, arg);

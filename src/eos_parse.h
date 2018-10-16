@@ -25,6 +25,7 @@ typedef struct actionArgument_t {
     char data[128];
 } actionArgument_t;
 
+void printString(const char in[], const char fieldName[], actionArgument_t *arg);
 void parseNameField(uint8_t *in, uint32_t inLength, const char fieldName[], actionArgument_t *arg, uint32_t *read, uint32_t *written);
 void parsePublicKeyField(uint8_t *in, uint32_t inLength, const char fieldName[], actionArgument_t *arg, uint32_t *read, uint32_t *written);
 void parseUint16Field(uint8_t *in, uint32_t inLength, const char fieldName[], actionArgument_t *arg, uint32_t *read, uint32_t *written);

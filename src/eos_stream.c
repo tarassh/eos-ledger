@@ -83,7 +83,20 @@ static void processTokenTransfer(txProcessingContext_t *context) {
     }
 }
 
-static void processEosioDelegateUndelegate(txProcessingContext_t *context) {
+static void processEosioDelegate(txProcessingContext_t *context) {
+    context->content->argumentCount = 4;
+    uint32_t bufferLength = context->currentActionDataBufferLength;
+    uint8_t *buffer = context->actionDataBuffer;
+
+    buffer += 2 * sizeof(name_t) + 2 * sizeof(asset_t);
+    bufferLength -= 2 * sizeof(name_t) + 2 * sizeof(asset_t);
+
+    if (buffer[0] != 0) {
+        context->content->argumentCount += 1;
+    }
+}
+
+static void processEosioUndelegate(txProcessingContext_t *context) {
     context->content->argumentCount = 4;
 }
 
@@ -182,8 +195,10 @@ void printArgument(uint8_t argNum, txProcessingContext_t *context) {
     if (contractName == EOSIO) {
         switch (actionName) {
         case EOSIO_DELEGATEBW:
+            parseDelegate(buffer, bufferLength, argNum, arg);
+            break;
         case EOSIO_UNDELEGATEBW:
-            parseDelegateUndelegate(buffer, bufferLength, argNum, arg);
+            parseUndelegate(buffer, bufferLength, argNum, arg);
             break;
         case EOSIO_REFUND:
             parseRefund(buffer, bufferLength, argNum, arg);
@@ -561,9 +576,11 @@ static void processActionData(txProcessingContext_t *context) {
         if (context->contractActionName == EOSIO_TOKEN_TRANSFER) {
             processTokenTransfer(context);
         } else if (context->contractName == EOSIO &&
-                  (context->contractActionName == EOSIO_DELEGATEBW || 
-                   context->contractActionName == EOSIO_UNDELEGATEBW)) {
-            processEosioDelegateUndelegate(context);
+                  context->contractActionName == EOSIO_DELEGATEBW) {
+            processEosioDelegate(context);
+        } else if (context->contractName == EOSIO &&
+                  context->contractActionName == EOSIO_UNDELEGATEBW) {
+            processEosioUndelegate(context);
         } else if (context->contractName == EOSIO && 
                    context->contractActionName == EOSIO_VOTEPRODUCER) {
             processEosioVoteProducer(context);

@@ -21,6 +21,17 @@
 #include "eos_types.h"
 #include <stdbool.h>
 
+void printString(const char in[], const char fieldName[], actionArgument_t *arg) {
+    uint32_t inLength = strlen(in);
+    uint32_t labelLength = strlen(fieldName);
+
+    os_memset(arg->label, 0, sizeof(arg->label));
+    os_memset(arg->data, 0, sizeof(arg->data));
+
+    os_memmove(arg->label, fieldName, labelLength);
+    os_memmove(arg->data, in, inLength);
+}
+
 void parseNameField(uint8_t *in, uint32_t inLength, const char fieldName[], actionArgument_t *arg, uint32_t *read, uint32_t *written) {
     if (inLength < sizeof(name_t)) {
         PRINTF("parseActionData Insufficient buffer\n");

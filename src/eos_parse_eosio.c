@@ -19,7 +19,27 @@
 #include "eos_types.h"
 #include "os.h"
 
-void parseDelegateUndelegate(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, actionArgument_t *arg) {
+void parseDelegate(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, actionArgument_t *arg) {
+    uint32_t read = 0;
+    uint32_t written = 0;
+
+    if (argNum == 0) {
+        parseNameField(buffer, bufferLength, "From", arg, &read, &written);
+    } else if (argNum == 1) {
+        buffer += sizeof(name_t); bufferLength -= sizeof(name_t);
+        parseNameField(buffer, bufferLength, "Receiver", arg, &read, &written);
+    } else if (argNum == 2) {
+        buffer += 2 * sizeof(name_t); bufferLength -= 2 * sizeof(name_t);
+        parseAssetField(buffer, bufferLength, "NET", arg, &read, &written);
+    } else if (argNum == 3) {
+        buffer += 2 * sizeof(name_t) + sizeof(asset_t); bufferLength -= 2 * sizeof(name_t) + sizeof(asset_t);
+        parseAssetField(buffer, bufferLength, "CPU", arg, &read, &written);
+    } else if (argNum == 4) {
+        printString("Yes", "Transfer Stake", arg);
+    }
+}
+
+void parseUndelegate(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, actionArgument_t *arg) {
     uint32_t read = 0;
     uint32_t written = 0;
 

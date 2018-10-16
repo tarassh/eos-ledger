@@ -19,17 +19,6 @@
 #include "os.h"
 #include <string.h>
 
-static void printString(const char in[], const char fieldName[], actionArgument_t *arg) {
-    uint32_t inLength = strlen(in);
-    uint32_t labelLength = strlen(fieldName);
-
-    os_memset(arg->label, 0, sizeof(arg->label));
-    os_memset(arg->data, 0, sizeof(arg->data));
-
-    os_memmove(arg->label, fieldName, labelLength);
-    os_memmove(arg->data, in, inLength);
-}
-
 void parseUnknownAction(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, actionArgument_t *arg) {
     if (argNum == 0) {
         printString("Arbitrary Data", "WARNING", arg);

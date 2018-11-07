@@ -22,31 +22,13 @@
 #include "cx.h"
 #include <stdbool.h>
 #include "eos_types.h"
-
-/**
- * Data processing rules
- * [type][offset]
-*/
-#define NAME_TYPE       0
-#define ASSET_TYPE      1
-#define STRING_TYPE     2
-#define PUBLIC_KEY_TYPE 3
-
-typedef struct actionArgument_t {
-    char label[14];
-    char data[128];
-} actionArgument_t;
+#include "eos_parse.h"
 
 typedef struct txProcessingContent_t {
-    char activeBuffers;
+    char argumentCount;
     char contract[14];
     char action[14];
-    char data[128];
-    actionArgument_t arg0;
-    actionArgument_t arg1;
-    actionArgument_t arg2;
-    actionArgument_t arg3;
-    actionArgument_t arg4;
+    actionArgument_t arg;
 } txProcessingContent_t;
 
 typedef enum txProcessingState_e {
@@ -75,6 +57,7 @@ typedef enum txProcessingState_e {
 typedef struct txProcessingContext_t {
     txProcessingState_e state;
     cx_sha256_t *sha256;
+    cx_sha256_t *dataSha256;
     uint32_t currentFieldLength;
     uint32_t currentFieldPos;
     uint32_t currentAutorizationIndex;
@@ -89,6 +72,8 @@ typedef struct txProcessingContext_t {
     name_t contractActionName;
     uint8_t sizeBuffer[12];
     uint8_t actionDataBuffer[512];
+    uint8_t dataAllowed;
+    checksum256 dataChecksum;
     txProcessingContent_t *content;
 } txProcessingContext_t;
 
@@ -98,7 +83,15 @@ typedef enum parserStatus_e {
     STREAM_FAULT
 } parserStatus_e;
 
-void initTxContext(txProcessingContext_t *context, cx_sha256_t *sha256, txProcessingContent_t *processingContent);
+void initTxContext(
+    txProcessingContext_t *context, 
+    cx_sha256_t *sha256, 
+    cx_sha256_t *dataSha256,
+    txProcessingContent_t *processingContent, 
+    uint8_t dataAllowed
+);
 parserStatus_e parseTx(txProcessingContext_t *context, uint8_t *buffer, uint32_t length);
+
+void printArgument(uint8_t argNum, txProcessingContext_t *processingContext);
 
 #endif // __EOS_STREAM_H__

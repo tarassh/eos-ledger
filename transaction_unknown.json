@@ -10,20 +10,15 @@
     "context_free_actions": [],
     "actions": [
       {
-        "account": "eosio.token",
-        "name": "transfer",
+        "account": "foocontract",
+        "name": "baraction",
         "authorization": [
           {
             "actor": "cryptofairy1",
             "permission": "active"
           }
         ],
-        "data": {
-          "from": "cryptofairy1",
-          "to": "lioninjungle",
-          "quantity": "1.0000 EOS",
-          "memo": "Test Memo"
-        }
+        "data": "test"
       }
     ],
     "transaction_extensions": []

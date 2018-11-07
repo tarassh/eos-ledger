@@ -22,6 +22,8 @@ from asn1 import Encoder, Numbers
 from datetime import datetime
 import struct
 import binascii
+from base58 import b58decode 
+import hashlib
 
 
 class Transaction:
@@ -106,7 +108,7 @@ class Transaction:
         parameters += Transaction.name_to_number(data['to'])
         parameters += Transaction.asset_to_number(data['quantity'])
         memo = data['memo']
-        parameters += struct.pack('B', len(memo))
+        parameters += Transaction.pack_fc_uint(len(memo))
         if len(memo) > 0:
             parameters += struct.pack(str(len(memo)) + 's', str(data['memo']))
 
@@ -126,8 +128,6 @@ class Transaction:
 
             if val == 0:
                 break
-
-        Transaction.unpack_fc_uint(out)
 
         return out
 
@@ -183,6 +183,73 @@ class Transaction:
         return parameters
 
     @staticmethod
+    def parse_public_key(data):
+        data = str(data[3:])
+        decoded = b58decode(data)
+        decoded = decoded[:-4]
+        parameters = struct.pack('B', 0)
+        parameters += decoded
+        return parameters
+
+    @staticmethod
+    def parse_auth(data):
+        parameters = struct.pack('I', data['threshold'])
+        key_number = len(data['keys'])
+        parameters += struct.pack('B', key_number)
+        for key in data['keys']:
+            parameters += Transaction.parse_public_key(key['key'])
+            parameters += struct.pack('H', key['weight'])
+        parameters += struct.pack('B', len(data['accounts']))
+        for account in data['accounts']:
+            parameters += Transaction.name_to_number(account['authorization']['actor'])
+            parameters += Transaction.name_to_number(account['authorization']['permission'])
+            parameters += struct.pack('H', account['weight'])
+        parameters += struct.pack('B', len(data['waits']))
+        for wait in data['waits']:
+            parameters += struct.pack('I', wait['wait'])
+            parameters += struct.pack('H', wait['weight'])
+        return parameters
+    
+    @staticmethod
+    def parse_update_auth(data):
+        parameters = Transaction.name_to_number(data['account'])
+        parameters += Transaction.name_to_number(data['permission'])
+        parameters += Transaction.name_to_number(data['parent'])
+        parameters += Transaction.parse_auth(data['auth'])
+        return parameters
+
+    @staticmethod
+    def parse_delete_auth(data):
+        parameters = Transaction.name_to_number(data['account'])
+        parameters += Transaction.name_to_number(data['permission'])
+        return parameters
+
+    @staticmethod
+    def parse_refund(data):
+        return Transaction.name_to_number(data['account'])
+
+    @staticmethod
+    def parse_link_auth(data):
+        parameters = Transaction.name_to_number(data['account'])
+        parameters += Transaction.name_to_number(data['contract'])
+        parameters += Transaction.name_to_number(data['action'])
+        parameters += Transaction.name_to_number(data['permission'])
+        return parameters
+
+    @staticmethod
+    def parse_unlink_auth(data):
+        parameters = Transaction.name_to_number(data['account'])
+        parameters += Transaction.name_to_number(data['contract'])
+        parameters += Transaction.name_to_number(data['action'])
+        return parameters
+
+    @staticmethod
+    def parse_unknown(data):
+        data = data * 1000
+        parameters = struct.pack(str(len(data)) + 's', str(data))
+        return parameters
+
+    @staticmethod
     def parse(json):
         tx = Transaction()
         tx.json = json
@@ -222,11 +289,28 @@ class Transaction:
             parameters = Transaction.parse_buy_rambytes(data)
         elif action['name'] == 'sellram':
             parameters = Transaction.parse_sell_ram(data)
+        elif action['name'] == 'updateauth':
+            parameters = Transaction.parse_update_auth(data)
+        elif action['name'] == 'deleteauth':
+            parameters = Transaction.parse_delete_auth(data)
+        elif action['name'] == 'refund':
+            parameters = Transaction.parse_refund(data)
+        elif action['name'] == 'linkauth':
+            parameters = Transaction.parse_link_auth(data)
+        elif action['name'] == 'unlinkauth':
+            parameters = Transaction.parse_unlink_auth(data)
+        else:
+            parameters = Transaction.parse_unknown(data)
 
         tx.data_size = Transaction.pack_fc_uint(len(parameters))
         tx.data = parameters
         tx.tx_ext = struct.pack('B', len(body['transaction_extensions']))
         tx.cfd = binascii.unhexlify('00' * 32)
+
+        sha = hashlib.sha256()
+        sha.update(tx.data_size)
+        sha.update(tx.data)
+        print 'Argument checksum ' +  sha.hexdigest()
 
         return tx
 

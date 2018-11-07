@@ -10,8 +10,8 @@
     "context_free_actions": [],
     "actions": [
       {
-        "account": "eosio.token",
-        "name": "transfer",
+        "account": "eosio",
+        "name": "voteproducer",
         "authorization": [
           {
             "actor": "cryptofairy1",
@@ -19,10 +19,9 @@
           }
         ],
         "data": {
-          "from": "cryptofairy1",
-          "to": "lioninjungle",
-          "quantity": "1.0000 EOS",
-          "memo": "Test Memo"
+          "account": "cryptofairy1",
+          "proxy": "cryptofairy2",
+          "producers": []
         }
       }
     ],

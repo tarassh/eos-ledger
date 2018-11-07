@@ -152,20 +152,7 @@ uint8_t asset_to_string(asset_t *asset, char *out, uint32_t size) {
     return assetTextLength;
 }
 
-uint8_t pack_fc_unsigned_int(fc_unsigned_int_t value, uint8_t *out) {
-    uint8_t i = 0;
-    uint64_t val = value;
-    do {
-        uint8_t b = (uint8_t)(val & 0x7f);
-        val >>= 7;
-        b |= ((val > 0) << 7);
-        *(out + i++) = b;
-    } while (val);
-
-    return i;
-}
-
-uint32_t unpack_fc_unsigned_int(uint8_t *in, uint32_t length, fc_unsigned_int_t *value) {
+uint32_t unpack_variant32(uint8_t *in, uint32_t length, variant32_t *value) {
     uint32_t i = 0;
     uint64_t v = 0; char b = 0; uint8_t by = 0;
     do {
@@ -186,25 +173,39 @@ uint32_t public_key_to_wif(uint8_t *publicKey, uint32_t keyLength, char *out, ui
         THROW(EXCEPTION_OVERFLOW);
     }
 
-    uint8_t temp[37];
-    uint32_t addressLen = 0;
+    uint8_t temp[33];
     // is even?
     temp[0] = (publicKey[64] & 0x1) ? 0x03 : 0x02;
     os_memmove(temp + 1, publicKey + 1, 32);
+    return compressed_public_key_to_wif(temp, sizeof(temp), out, outLength);
+}
 
+uint32_t compressed_public_key_to_wif(uint8_t *publicKey, uint32_t keyLength, char *out, uint32_t outLength) {
+    if (keyLength < 33) {
+        THROW(INVALID_PARAMETER);
+    }
+    if (outLength < 40) {
+        THROW(EXCEPTION_OVERFLOW);
+    }
+    
+    uint8_t temp[37];
+    os_memset(temp, 0, sizeof(temp));
+    os_memmove(temp, publicKey, 33);
+    
     uint8_t check[20];
     cx_ripemd160_t riprip;
     cx_ripemd160_init(&riprip);
     cx_hash(&riprip.header, CX_LAST, temp, 33, check);
     os_memmove(temp + 33, check, 4);
-
+    
     os_memset(out, 0, outLength);
     out[0] = 'E';
     out[1] = 'O';
     out[2] = 'S';
-    addressLen = buffer_to_encoded_base58(temp, sizeof(temp), out + 3, outLength - 3);
+    uint32_t addressLen = outLength - 3;
+    b58enc(temp, sizeof(temp), out + 3, &addressLen);
     if (addressLen + 3 >= outLength) {
         THROW(EXCEPTION_OVERFLOW);
     }
-    return addressLen;    
+    return addressLen + 3;
 }

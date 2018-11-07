@@ -1,4 +1,4 @@
-{
+  {
   "chain_id": "cf057bbfb72640471fd910bcb67639c22df9f92470936cddc1ade0e2f2e7dc4f",
   "transaction": {
     "expiration": "2018-07-14T10:43:28",
@@ -10,8 +10,8 @@
     "context_free_actions": [],
     "actions": [
       {
-        "account": "eosio.token",
-        "name": "transfer",
+        "account": "eosio",
+        "name": "deleteauth",
         "authorization": [
           {
             "actor": "cryptofairy1",
@@ -19,10 +19,8 @@
           }
         ],
         "data": {
-          "from": "cryptofairy1",
-          "to": "lioninjungle",
-          "quantity": "1.0000 EOS",
-          "memo": "Test Memo"
+          "account": "cryptofairy1",
+          "permission": "active"
         }
       }
     ],

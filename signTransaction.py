@@ -23,6 +23,7 @@ import json
 import struct
 from eosBase import Transaction
 from ledgerblue.comm import getDongle
+import argparse
 
 
 def parse_bip32_path(path):
@@ -39,10 +40,21 @@ def parse_bip32_path(path):
     return result
 
 
-donglePath = parse_bip32_path("44'/194'/0'/0/0")
+parser = argparse.ArgumentParser()
+parser.add_argument('--path', help="BIP 32 path to retrieve")
+parser.add_argument('--file', help="Transaction in JSON format")
+args = parser.parse_args()
+
+if args.path is None:
+    args.path = "44'/194'/0'/0/0"
+
+if args.file is None:
+    args.file = 'transaction.json'
+
+donglePath = parse_bip32_path(args.path)
 pathSize = len(donglePath) / 4
 
-with file('transaction_sellram.json') as f:
+with file(args.file) as f:
     obj = json.load(f)
     tx = Transaction.parse(obj)
     tx_raw = tx.encode()

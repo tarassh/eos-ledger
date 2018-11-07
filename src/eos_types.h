@@ -20,18 +20,19 @@
 
 #include <stdint.h>
 
-typedef uint32_t fc_unsigned_int_t;
+typedef uint32_t variant32_t;
 typedef uint64_t name_t;
 typedef uint64_t symbol_t;
 typedef uint8_t checksum256[32];
+typedef uint8_t public_key_t[33];
 
 typedef struct transaction_header_t {
     uint32_t expiration;
     uint16_t ref_block_num;
     uint32_t ref_block_prefix;
-    fc_unsigned_int_t max_net_usage_words;
+    variant32_t max_net_usage_words;
     uint8_t max_cpu_usage_ms;
-    fc_unsigned_int_t delay_sec;
+    variant32_t delay_sec;
 } transaction_header_t;
 
 typedef struct action_t {
@@ -51,8 +52,7 @@ typedef struct asset_t {
     symbol_t symbol;
 } asset_t;
 
-uint8_t pack_fc_unsigned_int(fc_unsigned_int_t value, uint8_t *out);
-uint32_t unpack_fc_unsigned_int(uint8_t *in, uint32_t length, fc_unsigned_int_t *value);
+uint32_t unpack_variant32(uint8_t *in, uint32_t length, variant32_t *value);
 
 name_t buffer_to_name_type(uint8_t *in, uint32_t size);
 uint8_t name_to_string(name_t value, char *out, uint32_t size);
@@ -60,5 +60,6 @@ uint8_t name_to_string(name_t value, char *out, uint32_t size);
 uint8_t asset_to_string(asset_t *asset, char *out, uint32_t size);
 
 uint32_t public_key_to_wif(uint8_t *publicKey, uint32_t keyLength, char *out, uint32_t outLength);
+uint32_t compressed_public_key_to_wif(uint8_t *publicKey, uint32_t keyLength, char *out, uint32_t outLength);
 
 #endif // __EOS_TYPES_H__

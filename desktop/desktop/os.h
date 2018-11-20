@@ -20,7 +20,7 @@
 #define BEGIN_TRY
 #define END_TRY
 #define TRY
-#define CATCH_OTHER(e)
+#define CATCH_OTHER(e) if (false)
 #define FINALLY
 
 #define PRINTF(X) puts(X)

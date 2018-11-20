@@ -31,5 +31,6 @@ void parseUpdateAuth(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, act
 void parseDeleteAuth(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, actionArgument_t *arg);
 void parseLinkAuth(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, actionArgument_t *arg);
 void parseUnlinkAuth(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, actionArgument_t *arg);
+void parseNewAccount(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, actionArgument_t *arg);
 
 #endif

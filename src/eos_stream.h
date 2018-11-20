@@ -29,6 +29,7 @@ typedef struct txProcessingContent_t {
     char contract[14];
     char action[14];
     actionArgument_t arg;
+    bool (*callback)(struct txProcessingContext_t *);
 } txProcessingContent_t;
 
 typedef enum txProcessingState_e {
@@ -62,6 +63,8 @@ typedef struct txProcessingContext_t {
     uint32_t currentFieldPos;
     uint32_t currentAutorizationIndex;
     uint32_t currentAutorizationNumber;
+    uint32_t currentActionIndex;
+    uint32_t currentActionNumer;
     uint32_t currentActionDataBufferLength;
     bool processingField;
     uint8_t tlvBuffer[5];
@@ -87,7 +90,7 @@ void initTxContext(
     txProcessingContext_t *context, 
     cx_sha256_t *sha256, 
     cx_sha256_t *dataSha256,
-    txProcessingContent_t *processingContent, 
+    txProcessingContent_t *processingContent,
     uint8_t dataAllowed
 );
 parserStatus_e parseTx(txProcessingContext_t *context, uint8_t *buffer, uint32_t length);

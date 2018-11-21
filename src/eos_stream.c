@@ -689,42 +689,42 @@ static void processActionData(txProcessingContext_t *context) {
 
         if (context->contractActionName == EOSIO_TOKEN_TRANSFER) {
             processTokenTransfer(context);
-        } else if (context->contractName == EOSIO &&
-                  context->contractActionName == EOSIO_DELEGATEBW) {
-            processEosioDelegate(context);
-        } else if (context->contractName == EOSIO &&
-                  context->contractActionName == EOSIO_UNDELEGATEBW) {
-            processEosioUndelegate(context);
-        } else if (context->contractName == EOSIO && 
-                   context->contractActionName == EOSIO_VOTEPRODUCER) {
-            processEosioVoteProducer(context);
-        } else if (context->contractName == EOSIO && 
-                   context->contractActionName == EOSIO_REFUND) {
-            processEosioRefund(context);
-        } else if (context->contractName == EOSIO && 
-                  (context->contractActionName == EOSIO_BUYRAM ||
-                   context->contractActionName == EOSIO_BUYRAMBYTES)) {
-            processEosioBuyRam(context);
-        } else if (context->contractName == EOSIO &&
-                   context->contractActionName == EOSIO_SELLRAM) {
-            processEosioSellRam(context);
-        } else if (context->contractName == EOSIO &&
-                   context->contractActionName == EOSIO_UPDATE_AUTH) {
-            processEosioUpdateAuth(context);
-        } else if (context->contractName == EOSIO &&
-                   context->contractActionName == EOSIO_DELETE_AUTH) {
-            processEosioDeleteAuth(context);
-        } else if (context->contractName == EOSIO &&
-                   context->contractActionName == EOSIO_LINK_AUTH) {
-            processEosioLinkAuth(context);
-        } else if (context->contractName == EOSIO &&
-                   context->contractActionName == EOSIO_UNLINK_AUTH) {
-            processEosioUnlinkAuth(context);
-        } else if (context->contractName == EOSIO &&
-                   context->contractActionName == EOSIO_NEW_ACCOUNT) {
-            processEosioNewAccountAction(context);
-        } else {
-            THROW(EXCEPTION);
+        } else if (context->contractName == EOSIO) {
+            switch (context->contractActionName) {
+            case EOSIO_DELEGATEBW:
+                processEosioDelegate(context);
+                break;
+            case EOSIO_UNDELEGATEBW:
+                processEosioUndelegate(context);
+                break;
+            case EOSIO_REFUND:
+                processEosioRefund(context);
+                break;
+            case EOSIO_VOTEPRODUCER:
+                processEosioVoteProducer(context);
+                break;
+            case EOSIO_BUYRAM:
+            case EOSIO_BUYRAMBYTES:
+                processEosioBuyRam(context);
+                break;
+            case EOSIO_SELLRAM:
+                processEosioSellRam(context);
+                break;
+            case EOSIO_UPDATE_AUTH:
+                processEosioUpdateAuth(context);
+                break;
+            case EOSIO_DELETE_AUTH:
+                processEosioDeleteAuth(context);
+                break;
+            case EOSIO_LINK_AUTH:
+                processEosioLinkAuth(context);
+                break;
+            case EOSIO_UNLINK_AUTH:
+                processEosioUnlinkAuth(context);
+                break;
+            default:
+                THROW(EXCEPTION);
+            }
         }
         
         if (!context->content->callback(context)) {

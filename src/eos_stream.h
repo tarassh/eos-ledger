@@ -29,7 +29,6 @@ typedef struct txProcessingContent_t {
     char contract[14];
     char action[14];
     actionArgument_t arg;
-    bool (*callback)(struct txProcessingContext_t *);
 } txProcessingContent_t;
 
 typedef enum txProcessingState_e {
@@ -57,6 +56,7 @@ typedef enum txProcessingState_e {
 
 typedef struct txProcessingContext_t {
     txProcessingState_e state;
+    bool actionReady;
     cx_sha256_t *sha256;
     cx_sha256_t *dataSha256;
     uint32_t currentFieldLength;
@@ -83,6 +83,7 @@ typedef struct txProcessingContext_t {
 typedef enum parserStatus_e {
     STREAM_PROCESSING,
     STREAM_FINISHED,
+    STREAM_ACTION_READY,
     STREAM_FAULT
 } parserStatus_e;
 

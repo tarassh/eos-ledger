@@ -42,7 +42,7 @@ static int hex_to_bytes(
 }
 
 bool onActionReady(txProcessingContext_t *context) {
-    printf("--------------- Confirm action #%d ---------------\n", context->currentActionIndex + 1);
+    printf("--------------- Confirm action #%d ---------------\n", context->currentActionIndex);
     
     puts("Contract");
     puts(context->content->contract);
@@ -85,10 +85,23 @@ int main(int argc, const char * argv[]) {
     uint8_t buffer[strlen(tx)/2];
     hex_to_bytes(tx, strlen(tx), buffer, sizeof(buffer));
     
-    txContent.callback = onActionReady;
-    
     initTxContext(&txProcessingCtx, &sha256, &sha256_arg, &txContent, 1);
-    parseTx(&txProcessingCtx, buffer, sizeof(buffer));
+    uint8_t status = parseTx(&txProcessingCtx, buffer, sizeof(buffer));
+    
+    do {
+        if (status == STREAM_FAULT) {
+            printf("FAILED");
+            return 1;
+        }
+        
+        if (status == STREAM_ACTION_READY) {
+            onActionReady(&txProcessingCtx);
+        }
+        
+        status = parseTx(&txProcessingCtx, buffer, sizeof(buffer));
+        
+    } while (status != STREAM_FINISHED);
+    
     
     unsigned char digest[32] = {0};
     cx_hash(&sha256.header, CX_LAST, digest, 0, digest);

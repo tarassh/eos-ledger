@@ -722,13 +722,12 @@ static void processActionData(txProcessingContext_t *context) {
             case EOSIO_UNLINK_AUTH:
                 processEosioUnlinkAuth(context);
                 break;
+            case EOSIO_NEW_ACCOUNT:
+                processEosioNewAccountAction(context);
+                break;
             default:
                 THROW(EXCEPTION);
             }
-        }
-        
-        if (!context->content->callback(context)) {
-            THROW(EXCEPTION);
         }
         
         if (++context->currentActionIndex < context->currentActionNumer) {
@@ -738,11 +737,16 @@ static void processActionData(txProcessingContext_t *context) {
         }
         
         context->processingField = false;
+        context->actionReady = true;
     }
 }
 
 static parserStatus_e processTxInternal(txProcessingContext_t *context) {
     for(;;) {
+        if (context->actionReady) {
+            context->actionReady = false;
+            return STREAM_ACTION_READY;
+        }
         if (context->state == TLV_DONE) {
             return STREAM_FINISHED;
         }
@@ -914,8 +918,10 @@ parserStatus_e parseTx(txProcessingContext_t *context, uint8_t *buffer, uint32_t
 #else
     BEGIN_TRY {
         TRY {
-            context->workBuffer = buffer;
-            context->commandLength = length;
+            if (context->commandLength == 0) {
+                context->workBuffer = buffer;
+                context->commandLength = length;
+            }
             result = processTxInternal(context);
         }
         CATCH_OTHER(e) {

@@ -81,10 +81,10 @@ typedef struct txProcessingContext_t {
 } txProcessingContext_t;
 
 typedef enum parserStatus_e {
+    STREAM_FAULT,
     STREAM_PROCESSING,
-    STREAM_FINISHED,
     STREAM_ACTION_READY,
-    STREAM_FAULT
+    STREAM_FINISHED,
 } parserStatus_e;
 
 void initTxContext(

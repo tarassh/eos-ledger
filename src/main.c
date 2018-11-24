@@ -91,8 +91,6 @@ txProcessingContent_t txContent;
 
 volatile uint8_t dataAllowed;
 volatile char fullAddress[60];
-volatile bool dataPresent;
-volatile bool skipWarning;
 
 bagl_element_t tmp_element;
 
@@ -386,28 +384,28 @@ unsigned int ui_approval_prepro(const bagl_element_t *element)
         }
         if (display)
         {
-            PRINTF("STEP: %d Display: %d Element: %d\n", ux_step, display, element->component.userid);
+            // PRINTF("STEP: %d Display: %d Element: %d\n", ux_step, display, element->component.userid);
             switch (element->component.userid)
             {
             case 1:
                 UX_CALLBACK_SET_INTERVAL(2000);
-                PRINTF("Transaction\n");
+                // PRINTF("Transaction\n");
 
                 break;
             case 2:
                 UX_CALLBACK_SET_INTERVAL(MAX(
                     3000, 1000 + bagl_label_roundtrip_duration_ms(element, 7)));
 
-                PRINTF("Contract\n");
+                // PRINTF("Contract\n");
                 break;
             case 3:
                 UX_CALLBACK_SET_INTERVAL(MAX(
                     3000, 1000 + bagl_label_roundtrip_duration_ms(element, 7)));
 
-                PRINTF("Action\n");    
+                // PRINTF("Action\n");    
                 break;
             case 4:
-                PRINTF("Argument: %d\n", ux_step - 3);
+                // PRINTF("Argument: %d\n", ux_step - 3);
 
                 UX_CALLBACK_SET_INTERVAL(MAX(
                     3000, 1000 + bagl_label_roundtrip_duration_ms(element, 7)));
@@ -425,7 +423,6 @@ unsigned int ui_approval_nanos_button(unsigned int button_mask,
 
 void ui_idle(void)
 {
-    skipWarning = false;
     UX_MENU_DISPLAY(0, menu_main, NULL);
 }
 
@@ -557,10 +554,37 @@ unsigned int ui_approval_nanos_button(unsigned int button_mask,
         break;
 
     case BUTTON_EVT_RELEASED | BUTTON_RIGHT:
-    {
-        io_seproxyhal_touch_tx_ok(NULL);
+        {
+            parserStatus_e txStatus = parseTx(&txProcessingCtx, NULL, 0);
+            PRINTF("txStatus: %d\n", txStatus);
+            if (txStatus == STREAM_FINISHED) {
+                // store hash
+                cx_hash(&sha256.header, CX_LAST, tmpCtx.transactionContext.hash, 0,
+                tmpCtx.transactionContext.hash);
+                io_seproxyhal_touch_tx_ok(NULL);
+            } else if (txStatus == STREAM_ACTION_READY) {
+                ux_step = 0;
+                ux_step_count = 3 + txContent.argumentCount;
+                UX_REDISPLAY();
+            } else if (txStatus == STREAM_PROCESSING) {
+                uint8_t tx = 0;
+                G_io_apdu_buffer[tx++] = 0x90;
+                G_io_apdu_buffer[tx++] = 0x00;
+                // Send back the response, do not restart the event loop
+                io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
+                // Display back the original UX
+                ui_idle();
+            } else {
+                uint8_t tx = 0;
+                G_io_apdu_buffer[tx++] = 0x6A;
+                G_io_apdu_buffer[tx++] = 0x80;
+                // Send back the response, do not restart the event loop
+                io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
+                // Display back the original UX
+                ui_idle();
+            }
+        }
         break;
-    }
     }
     return 0;
 }
@@ -669,8 +693,7 @@ void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t *dataBuffer,
     else
     {
         // prepare for a UI based reply
-        skipWarning = false;
-        snprintf(fullAddress, sizeof(fullAddress), "%.*s", strlen(tmpCtx.publicKeyContext.address),
+        snprintf((char *)fullAddress, sizeof(fullAddress), "%.*s", strlen(tmpCtx.publicKeyContext.address),
                  tmpCtx.publicKeyContext.address);
         ux_step = 0;
         ux_step_count = 2;
@@ -723,7 +746,6 @@ void handleSign(uint8_t p1, uint8_t p2, uint8_t *workBuffer,
             workBuffer += 4;
             dataLength -= 4;
         }
-        dataPresent = false;
         initTxContext(&txProcessingCtx, &sha256, &dataSha256, &txContent, N_storage.dataAllowed);
     }
     else if (p1 != P1_MORE)
@@ -739,10 +761,24 @@ void handleSign(uint8_t p1, uint8_t p2, uint8_t *workBuffer,
         PRINTF("Parser not initialized\n");
         THROW(0x6985);
     }
+
     txResult = parseTx(&txProcessingCtx, workBuffer, dataLength);
+    PRINTF("txResult: %d\n", txResult);
     switch (txResult)
     {
+    case STREAM_ACTION_READY:
+
+        PRINTF("GOING TO LAUNCH UI\n");
+
+        ux_step = 0;
+        ux_step_count = 3 + txContent.argumentCount;
+        UX_DISPLAY(ui_approval_nanos, ui_approval_prepro);
+
+        *flags |= IO_ASYNCH_REPLY;
+
+        break;
     case STREAM_FINISHED:
+        PRINTF("TODO: SIGN");
         break;
     case STREAM_PROCESSING:
         THROW(0x9000);
@@ -753,16 +789,11 @@ void handleSign(uint8_t p1, uint8_t p2, uint8_t *workBuffer,
         THROW(0x6A80);
     }
 
-    // store hash
-    cx_hash(&sha256.header, CX_LAST, tmpCtx.transactionContext.hash, 0,
-            tmpCtx.transactionContext.hash);
+    // ux_step = 0;
+    // ux_step_count = 3 + txContent.argumentCount;
+    // UX_DISPLAY(ui_approval_nanos, ui_approval_prepro);
 
-    skipWarning = !dataPresent;
-    ux_step = 0;
-    ux_step_count = 3 + txContent.argumentCount;
-    UX_DISPLAY(ui_approval_nanos, ui_approval_prepro);
-
-    *flags |= IO_ASYNCH_REPLY;
+    // *flags |= IO_ASYNCH_REPLY;
 }
 
 void handleApdu(volatile unsigned int *flags, volatile unsigned int *tx)

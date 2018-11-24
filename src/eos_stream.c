@@ -657,6 +657,7 @@ static void processUnknownActionData(txProcessingContext_t *context) {
 
         context->state = TLV_TX_EXTENSION_LIST_SIZE;
         context->processingField = false;
+        context->actionReady = true;
     }
 }
 

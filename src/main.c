@@ -470,9 +470,6 @@ unsigned int ui_address_nanos_button(unsigned int button_mask,
 
 unsigned int io_seproxyhal_touch_tx_ok(const bagl_element_t *e)
 {
-    // store hash
-    cx_hash(&sha256.header, CX_LAST, tmpCtx.transactionContext.hash, 0, tmpCtx.transactionContext.hash);
-
     uint32_t tx = sign_hash_and_set_result();
     io_exchange_with_code(0x9000, tx);
     // Display back the original UX
@@ -501,7 +498,7 @@ unsigned int ui_approval_nanos_button(unsigned int button_mask,
     case BUTTON_EVT_RELEASED | BUTTON_RIGHT:
         {
             parserStatus_e txStatus = parseTx(&txProcessingCtx, NULL, 0);
-            PRINTF("txStatus: %d\n", txStatus);
+            PRINTF("Status from Button: %d\n", txStatus);
             if (txStatus == STREAM_FINISHED) {
                 io_seproxyhal_touch_tx_ok(NULL);
             } else if (txStatus == STREAM_ACTION_READY) {
@@ -664,6 +661,9 @@ void handleGetAppConfiguration(uint8_t p1, uint8_t p2, uint8_t *workBuffer,
 
 uint32_t sign_hash_and_set_result(void) 
 {
+    // store hash
+    cx_hash(&sha256.header, CX_LAST, tmpCtx.transactionContext.hash, 0, tmpCtx.transactionContext.hash);
+
     uint8_t privateKeyData[64];
     cx_ecfp_private_key_t privateKey;
     uint32_t tx = 0;
@@ -757,7 +757,7 @@ void handleSign(uint8_t p1, uint8_t p2, uint8_t *workBuffer,
     }
 
     txResult = parseTx(&txProcessingCtx, workBuffer, dataLength);
-    PRINTF("txResult: %d\n", txResult);
+    PRINTF("Status from Processing: %d\n", txResult);
     switch (txResult)
     {
     case STREAM_ACTION_READY:

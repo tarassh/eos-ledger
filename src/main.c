@@ -387,32 +387,21 @@ unsigned int ui_approval_prepro(const bagl_element_t *element)
         }
         if (display)
         {
-            // PRINTF("STEP: %d Display: %d Element: %d\n", ux_step, display, element->component.userid);
             switch (element->component.userid)
             {
             case 1:
                 UX_CALLBACK_SET_INTERVAL(2000);
-                // PRINTF("Transaction\n");
-
                 break;
+
             case 2:
-                UX_CALLBACK_SET_INTERVAL(MAX(
-                    3000, 1000 + bagl_label_roundtrip_duration_ms(element, 7)));
-
-                // PRINTF("Contract\n");
-                break;
             case 3:
                 UX_CALLBACK_SET_INTERVAL(MAX(
                     3000, 1000 + bagl_label_roundtrip_duration_ms(element, 7)));
-
-                // PRINTF("Action\n");    
                 break;
-            case 4:
-                // PRINTF("Argument: %d\n", ux_step - 3);
 
+            case 4:
                 UX_CALLBACK_SET_INTERVAL(MAX(
-                    3000, 1000 + bagl_label_roundtrip_duration_ms(element, 7)));
-                
+                    3000, 1000 + bagl_label_roundtrip_duration_ms(element, 7)));                
                 printArgument(ux_step - 3, &txProcessingCtx);
                 break;
             }
@@ -498,7 +487,6 @@ unsigned int ui_approval_nanos_button(unsigned int button_mask,
     case BUTTON_EVT_RELEASED | BUTTON_RIGHT:
         {
             parserStatus_e txStatus = parseTx(&txProcessingCtx, NULL, 0);
-            PRINTF("Status from Button: %d\n", txStatus);
             if (txStatus == STREAM_FINISHED) {
                 io_seproxyhal_touch_tx_ok(NULL);
             } else if (txStatus == STREAM_ACTION_READY) {
@@ -757,13 +745,9 @@ void handleSign(uint8_t p1, uint8_t p2, uint8_t *workBuffer,
     }
 
     txResult = parseTx(&txProcessingCtx, workBuffer, dataLength);
-    PRINTF("Status from Processing: %d\n", txResult);
     switch (txResult)
     {
     case STREAM_ACTION_READY:
-
-        PRINTF("GOING TO LAUNCH UI\n");
-
         ux_step = 0;
         ux_step_count = 3 + txContent.argumentCount;
         UX_DISPLAY(ui_approval_nanos, ui_approval_prepro);

@@ -34,9 +34,15 @@ unsigned int io_seproxyhal_touch_tx_ok(const bagl_element_t *e);
 unsigned int io_seproxyhal_touch_tx_cancel(const bagl_element_t *e);
 unsigned int io_seproxyhal_touch_address_ok(const bagl_element_t *e);
 unsigned int io_seproxyhal_touch_address_cancel(const bagl_element_t *e);
+void io_exchange_with_code(uint16_t code, uint32_t tx);
 void ui_idle(void);
 
-uint32_t set_result_get_publicKey(void);
+uint32_t get_public_key_and_set_result(void);
+uint32_t sign_hash_and_set_result(void);
+unsigned int ui_address_nanos_button(unsigned int button_mask,
+                                     unsigned int button_mask_counter);
+unsigned int ui_approval_nanos_button(unsigned int button_mask,
+                                      unsigned int button_mask_counter);
 
 #define MAX_BIP32_PATH 10
 
@@ -257,9 +263,6 @@ unsigned int ui_address_prepro(const bagl_element_t *element)
     return 1;
 }
 
-unsigned int ui_address_nanos_button(unsigned int button_mask,
-                                     unsigned int button_mask_counter);
-
 const bagl_element_t ui_approval_nanos[] = {
     // type                               userid    x    y   w    h  str rad
     // fill      fg        bg      fid iid  txt   touchparams...       ]
@@ -418,9 +421,6 @@ unsigned int ui_approval_prepro(const bagl_element_t *element)
     return display;
 }
 
-unsigned int ui_approval_nanos_button(unsigned int button_mask,
-                                      unsigned int button_mask_counter);
-
 void ui_idle(void)
 {
     UX_MENU_DISPLAY(0, menu_main, NULL);
@@ -435,11 +435,8 @@ unsigned int io_seproxyhal_touch_exit(const bagl_element_t *e)
 
 unsigned int io_seproxyhal_touch_address_ok(const bagl_element_t *e)
 {
-    uint32_t tx = set_result_get_publicKey();
-    G_io_apdu_buffer[tx++] = 0x90;
-    G_io_apdu_buffer[tx++] = 0x00;
-    // Send back the response, do not restart the event loop
-    io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
+    uint32_t tx = get_public_key_and_set_result();
+    io_exchange_with_code(0x9000, tx);
     // Display back the original UX
     ui_idle();
     return 0; // do not redraw the widget
@@ -447,10 +444,7 @@ unsigned int io_seproxyhal_touch_address_ok(const bagl_element_t *e)
 
 unsigned int io_seproxyhal_touch_address_cancel(const bagl_element_t *e)
 {
-    G_io_apdu_buffer[0] = 0x69;
-    G_io_apdu_buffer[1] = 0x85;
-    // Send back the response, do not restart the event loop
-    io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
+    io_exchange_with_code(0x6985, 0);
     // Display back the original UX
     ui_idle();
     return 0; // do not redraw the widget
@@ -476,57 +470,11 @@ unsigned int ui_address_nanos_button(unsigned int button_mask,
 
 unsigned int io_seproxyhal_touch_tx_ok(const bagl_element_t *e)
 {
-    uint8_t privateKeyData[64];
-    cx_ecfp_private_key_t privateKey;
-    uint32_t tx = 0;
-    uint8_t V[33];
-    uint8_t K[32];
-    int tries = 0;
+    // store hash
+    cx_hash(&sha256.header, CX_LAST, tmpCtx.transactionContext.hash, 0, tmpCtx.transactionContext.hash);
 
-    os_perso_derive_node_bip32(
-        CX_CURVE_256K1, tmpCtx.transactionContext.bip32Path,
-        tmpCtx.transactionContext.pathLength, privateKeyData, NULL);
-    cx_ecfp_init_private_key(CX_CURVE_256K1, privateKeyData, 32, &privateKey);
-    os_memset(privateKeyData, 0, sizeof(privateKeyData));
-
-    // Loop until a candidate matching the canonical signature is found
-
-    for (;;)
-    {
-        if (tries == 0)
-        {
-            rng_rfc6979(G_io_apdu_buffer + 100, tmpCtx.transactionContext.hash, privateKey.d, privateKey.d_len, SECP256K1_N, 32, V, K);
-        }
-        else
-        {
-            rng_rfc6979(G_io_apdu_buffer + 100, tmpCtx.transactionContext.hash, NULL, 0, SECP256K1_N, 32, V, K);
-        }
-        uint32_t infos;
-        tx = cx_ecdsa_sign(&privateKey, CX_NO_CANONICAL | CX_RND_PROVIDED | CX_LAST, CX_SHA256,
-                           tmpCtx.transactionContext.hash,
-                           32, G_io_apdu_buffer + 100, &infos);
-        if ((infos & CX_ECCINFO_PARITY_ODD) != 0)
-        {
-            G_io_apdu_buffer[100] |= 0x01;
-        }
-        G_io_apdu_buffer[0] = 27 + 4 + (G_io_apdu_buffer[100] & 0x01);
-        ecdsa_der_to_sig(G_io_apdu_buffer + 100, G_io_apdu_buffer + 1);
-        if (check_canonical(G_io_apdu_buffer + 1))
-        {
-            tx = 1 + 64;
-            break;
-        }
-        else
-        {
-            tries++;
-        }
-    }
-
-    os_memset(&privateKey, 0, sizeof(privateKey));
-    G_io_apdu_buffer[tx++] = 0x90;
-    G_io_apdu_buffer[tx++] = 0x00;
-    // Send back the response, do not restart the event loop
-    io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
+    uint32_t tx = sign_hash_and_set_result();
+    io_exchange_with_code(0x9000, tx);
     // Display back the original UX
     ui_idle();
 
@@ -535,10 +483,7 @@ unsigned int io_seproxyhal_touch_tx_ok(const bagl_element_t *e)
 
 unsigned int io_seproxyhal_touch_tx_cancel(const bagl_element_t *e)
 {
-    G_io_apdu_buffer[0] = 0x69;
-    G_io_apdu_buffer[1] = 0x85;
-    // Send back the response, do not restart the event loop
-    io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
+    io_exchange_with_code(0x6985, 0);
     // Display back the original UX
     ui_idle();
     return 0; // do not redraw the widget
@@ -558,28 +503,17 @@ unsigned int ui_approval_nanos_button(unsigned int button_mask,
             parserStatus_e txStatus = parseTx(&txProcessingCtx, NULL, 0);
             PRINTF("txStatus: %d\n", txStatus);
             if (txStatus == STREAM_FINISHED) {
-                // store hash
-                cx_hash(&sha256.header, CX_LAST, tmpCtx.transactionContext.hash, 0,
-                tmpCtx.transactionContext.hash);
                 io_seproxyhal_touch_tx_ok(NULL);
             } else if (txStatus == STREAM_ACTION_READY) {
                 ux_step = 0;
                 ux_step_count = 3 + txContent.argumentCount;
                 UX_REDISPLAY();
             } else if (txStatus == STREAM_PROCESSING) {
-                uint8_t tx = 0;
-                G_io_apdu_buffer[tx++] = 0x90;
-                G_io_apdu_buffer[tx++] = 0x00;
-                // Send back the response, do not restart the event loop
-                io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
+                io_exchange_with_code(0x9000, 0);
                 // Display back the original UX
                 ui_idle();
             } else {
-                uint8_t tx = 0;
-                G_io_apdu_buffer[tx++] = 0x6A;
-                G_io_apdu_buffer[tx++] = 0x80;
-                // Send back the response, do not restart the event loop
-                io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
+                io_exchange_with_code(0x6A80, 0);
                 // Display back the original UX
                 ui_idle();
             }
@@ -587,6 +521,13 @@ unsigned int ui_approval_nanos_button(unsigned int button_mask,
         break;
     }
     return 0;
+}
+
+void io_exchange_with_code(uint16_t code, uint32_t tx) {
+	G_io_apdu_buffer[tx++] = code >> 8;
+	G_io_apdu_buffer[tx++] = code & 0xFF;
+    // Send back the response, do not restart the event loop
+	io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
 }
 
 unsigned short io_exchange_al(unsigned char channel, unsigned short tx_len)
@@ -621,7 +562,7 @@ unsigned short io_exchange_al(unsigned char channel, unsigned short tx_len)
     return 0;
 }
 
-uint32_t set_result_get_publicKey()
+uint32_t get_public_key_and_set_result()
 {
     uint32_t tx = 0;
     G_io_apdu_buffer[tx++] = 65;
@@ -687,7 +628,7 @@ void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t *dataBuffer,
                       tmpCtx.publicKeyContext.address, sizeof(tmpCtx.publicKeyContext.address));
     if (p1 == P1_NON_CONFIRM)
     {
-        *tx = set_result_get_publicKey();
+        *tx = get_public_key_and_set_result();
         THROW(0x9000);
     }
     else
@@ -719,6 +660,59 @@ void handleGetAppConfiguration(uint8_t p1, uint8_t p2, uint8_t *workBuffer,
     G_io_apdu_buffer[3] = LEDGER_PATCH_VERSION;
     *tx = 4;
     THROW(0x9000);
+}
+
+uint32_t sign_hash_and_set_result(void) 
+{
+    uint8_t privateKeyData[64];
+    cx_ecfp_private_key_t privateKey;
+    uint32_t tx = 0;
+    uint8_t V[33];
+    uint8_t K[32];
+    int tries = 0;
+
+    os_perso_derive_node_bip32(
+        CX_CURVE_256K1, tmpCtx.transactionContext.bip32Path,
+        tmpCtx.transactionContext.pathLength, privateKeyData, NULL);
+    cx_ecfp_init_private_key(CX_CURVE_256K1, privateKeyData, 32, &privateKey);
+    os_memset(privateKeyData, 0, sizeof(privateKeyData));
+
+    // Loop until a candidate matching the canonical signature is found
+
+    for (;;)
+    {
+        if (tries == 0)
+        {
+            rng_rfc6979(G_io_apdu_buffer + 100, tmpCtx.transactionContext.hash, privateKey.d, privateKey.d_len, SECP256K1_N, 32, V, K);
+        }
+        else
+        {
+            rng_rfc6979(G_io_apdu_buffer + 100, tmpCtx.transactionContext.hash, NULL, 0, SECP256K1_N, 32, V, K);
+        }
+        uint32_t infos;
+        tx = cx_ecdsa_sign(&privateKey, CX_NO_CANONICAL | CX_RND_PROVIDED | CX_LAST, CX_SHA256,
+                           tmpCtx.transactionContext.hash,
+                           32, G_io_apdu_buffer + 100, &infos);
+        if ((infos & CX_ECCINFO_PARITY_ODD) != 0)
+        {
+            G_io_apdu_buffer[100] |= 0x01;
+        }
+        G_io_apdu_buffer[0] = 27 + 4 + (G_io_apdu_buffer[100] & 0x01);
+        ecdsa_der_to_sig(G_io_apdu_buffer + 100, G_io_apdu_buffer + 1);
+        if (check_canonical(G_io_apdu_buffer + 1))
+        {
+            tx = 1 + 64;
+            break;
+        }
+        else
+        {
+            tries++;
+        }
+    }
+
+    os_memset(&privateKey, 0, sizeof(privateKey));
+
+    return tx;
 }
 
 void handleSign(uint8_t p1, uint8_t p2, uint8_t *workBuffer,
@@ -778,8 +772,8 @@ void handleSign(uint8_t p1, uint8_t p2, uint8_t *workBuffer,
 
         break;
     case STREAM_FINISHED:
-        PRINTF("TODO: SIGN");
-        break;
+        *tx = sign_hash_and_set_result();
+        THROW(0x9000);
     case STREAM_PROCESSING:
         THROW(0x9000);
     case STREAM_FAULT:
@@ -788,12 +782,6 @@ void handleSign(uint8_t p1, uint8_t p2, uint8_t *workBuffer,
         PRINTF("Unexpected parser status\n");
         THROW(0x6A80);
     }
-
-    // ux_step = 0;
-    // ux_step_count = 3 + txContent.argumentCount;
-    // UX_DISPLAY(ui_approval_nanos, ui_approval_prepro);
-
-    // *flags |= IO_ASYNCH_REPLY;
 }
 
 void handleApdu(volatile unsigned int *flags, volatile unsigned int *tx)

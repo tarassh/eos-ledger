@@ -486,21 +486,26 @@ unsigned int ui_approval_nanos_button(unsigned int button_mask,
 
     case BUTTON_EVT_RELEASED | BUTTON_RIGHT:
         {
-            parserStatus_e txStatus = parseTx(&txProcessingCtx, NULL, 0);
-            if (txStatus == STREAM_FINISHED) {
-                io_seproxyhal_touch_tx_ok(NULL);
-            } else if (txStatus == STREAM_ACTION_READY) {
+            parserStatus_e txResult = parseTx(&txProcessingCtx, NULL, 0);
+            switch (txResult) {
+            case STREAM_ACTION_READY:
                 ux_step = 0;
                 ux_step_count = 3 + txContent.argumentCount;
                 UX_REDISPLAY();
-            } else if (txStatus == STREAM_PROCESSING) {
+                break;
+            case STREAM_PROCESSING:
                 io_exchange_with_code(0x9000, 0);
                 // Display back the original UX
                 ui_idle();
-            } else {
+                break;
+            case STREAM_FINISHED:
+                io_seproxyhal_touch_tx_ok(NULL);
+                break;
+            default:
                 io_exchange_with_code(0x6A80, 0);
                 // Display back the original UX
                 ui_idle();
+                break;
             }
         }
         break;

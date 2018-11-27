@@ -57,6 +57,7 @@ typedef enum txProcessingState_e {
 typedef struct txProcessingContext_t {
     txProcessingState_e state;
     bool actionReady;
+    bool confirmProcessing;
     cx_sha256_t *sha256;
     cx_sha256_t *dataSha256;
     uint32_t currentFieldLength;
@@ -84,6 +85,7 @@ typedef enum parserStatus_e {
     STREAM_FAULT,
     STREAM_PROCESSING,
     STREAM_ACTION_READY,
+    STREAM_CONFIRM_PROCESSING,
     STREAM_FINISHED,
 } parserStatus_e;
 

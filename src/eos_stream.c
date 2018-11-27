@@ -444,7 +444,6 @@ static void processZeroSizeField(txProcessingContext_t *context) {
  * Process Action Number Field. Except hashing the data, function
  * caches an incomming data. So, when all bytes for particulat field are received
  * do additional processing: Read actual number of actions encoded in buffer.
- * Throw exception if number is not '1'.
 */
 static void processActionListSizeField(txProcessingContext_t *context) {
     if (context->currentFieldPos < context->currentFieldLength) {
@@ -473,6 +472,9 @@ static void processActionListSizeField(txProcessingContext_t *context) {
 
         context->state++;
         context->processingField = false;
+        if (context->currentActionNumer > 1) {
+            context->confirmProcessing = true;
+        }
     }
 }
 
@@ -749,6 +751,10 @@ static void processActionData(txProcessingContext_t *context) {
 
 static parserStatus_e processTxInternal(txProcessingContext_t *context) {
     for(;;) {
+        if (context->confirmProcessing) {
+            context->confirmProcessing = false;
+            return STREAM_CONFIRM_PROCESSING;
+        }
         if (context->actionReady) {
             context->actionReady = false;
             return STREAM_ACTION_READY;
@@ -899,7 +905,7 @@ static parserStatus_e processTxInternal(txProcessingContext_t *context) {
  * [EXPIRATION][REF_BLOCK_NUM][REF_BLOCK_PREFIX][MAX_NET_USAGE_WORDS][MAX_CPU_USAGE_MS][DELAY_SEC]
  * 
  * CTX_FREE_ACTION_NUMBER theoretically is not fixed due to serialization. Ledger accepts only 0 as encoded value.
- * ACTION_NUMBER theoretically is not fixed due to serialization. Ledger accepts only 1 as encoded value.
+ * ACTION_NUMBER theoretically is not fixed due to serialization.
  * 
  * ACTION size may vary as authorization list and action data is dynamic:
  * [ACCOUNT][NAME][AUTHORIZATION_NUMBER][AUTHORIZATION 0][AUTHORIZATION 1]..[AUTHORIZATION N][ACTION_DATA]

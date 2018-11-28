@@ -1,0 +1,83 @@
+{
+  "chain_id": "cf057bbfb72640471fd910bcb67639c22df9f92470936cddc1ade0e2f2e7dc4f",
+  "transaction": {
+    "expiration": "2018-07-14T10:43:28",
+    "ref_block_num": 6439,
+    "ref_block_prefix": 2995713264,
+    "net_usage_words": 0,
+    "max_cpu_usage_ms": 0,
+    "delay_sec": 0,
+    "context_free_actions": [],
+    "actions": [
+      {
+        "account": "eosio",
+        "name": "newaccount",
+        "authorization": [
+          {
+            "actor": "cryptofairy1",
+            "permission": "active"
+          }
+        ],
+        "data": {
+          "creator": "cryptofairy1",
+          "newact": "bobmarley",
+          "owner": {
+            "threshold": 1,
+            "keys": [
+              {
+                "key": "EOS8Dkj827FpinZBGmhTM28B85H9eXiFH5XzvLoeukCJV5sKfLc6K",
+                "weight": 1
+              }
+            ],
+            "accounts": [],
+            "waits": []
+          },
+          "active": {
+            "threshold": 1,
+            "keys": [
+              {
+                "key": "EOS8Dkj827FpinZBGmhTM28B85H9eXiFH5XzvLoeukCJV5sKfLc6K",
+                "weight": 1
+              }
+            ],
+            "accounts": [],
+            "waits": []
+          }
+        }
+      },
+      {
+        "account": "eosio",
+        "name": "buyrambytes",
+        "authorization": [
+          {
+            "actor": "cryptofairy1",
+            "permission": "active"
+          }
+        ],
+        "data": {
+          "buyer": "cryptofairy1",
+          "receiver": "bobmarley",
+          "bytes": 4096
+        }
+      },
+      {
+        "account": "eosio",
+        "name": "delegatebw",
+        "authorization": [
+          {
+            "actor": "cryptofairy1",
+            "permission": "active"
+          }
+        ],
+        "data": {
+          "from": "cryptofairy1",
+          "to": "bobmarley",
+          "stake_net_quantity": "1.0000 EOS",
+          "stake_cpu_quantity": "0.5000 EOS",
+          "transfer": true
+        }
+      }
+    ],
+    "transaction_extensions": []
+  }
+}

@@ -26,6 +26,11 @@ from base58 import b58decode
 import hashlib
 
 
+class Action:
+    def __init__(self):
+        pass
+
+
 class Transaction:
     def __init__(self):
         pass
@@ -117,13 +122,11 @@ class Transaction:
     @staticmethod
     def pack_fc_uint(value):
         out = ''
-        i = 0
         val = value
         while True:
             b = val & 0x7f
             val >>= 7
             b |= ((val > 0) << 7)
-            i += 1
             out += chr(b)
 
             if val == 0:
@@ -155,8 +158,7 @@ class Transaction:
     def parse_vote_producer(data):
         parameters = Transaction.name_to_number(data['account'])
         parameters += Transaction.name_to_number(data['proxy'])
-        length = len(data['producers'])
-        parameters += struct.pack('B', length)
+        parameters += Transaction.pack_fc_uint(len(data['producers']))
         for producer in data['producers']:
             parameters += Transaction.name_to_number(producer)
 
@@ -244,6 +246,23 @@ class Transaction:
         return parameters
 
     @staticmethod
+    def parse_newaccount(data):
+        parameters = Transaction.name_to_number(data['creator'])
+        parameters += Transaction.name_to_number(data['newact'])
+        parameters += Transaction.parse_auth(data['owner'])
+        parameters += Transaction.parse_auth(data['active'])
+        return parameters
+
+    @staticmethod
+    def parse_delegate(data):
+        parameters = Transaction.name_to_number(data['from'])
+        parameters += Transaction.name_to_number(data['to'])
+        parameters += Transaction.asset_to_number(data['stake_net_quantity'])
+        parameters += Transaction.asset_to_number(data['stake_cpu_quantity'])
+        parameters += chr(0x01) if data['transfer'] else chr(0x00)
+        return parameters
+
+    @staticmethod
     def parse_unknown(data):
         data = data * 1000
         parameters = struct.pack(str(len(data)) + 's', str(data))
@@ -269,53 +288,89 @@ class Transaction:
         tx.ctx_free_actions_size = struct.pack('B', len(body['context_free_actions']))
         tx.actions_size = struct.pack('B', len(body['actions']))
 
-        action = body['actions'][0]
-        tx.account = Transaction.name_to_number(action['account'])
-        tx.name = Transaction.name_to_number(action['name'])
+        tx.actions = []
+        for action in body['actions']:
+            act = Action()
+            act.account = Transaction.name_to_number(action['account'])
+            act.name = Transaction.name_to_number(action['name'])
 
-        tx.auth_size = struct.pack('B', len(action['authorization']))
-        tx.auth = []
-        for auth in action['authorization']:
-            tx.auth.append((Transaction.name_to_number(auth['actor']), Transaction.name_to_number(auth['permission'])))
+            act.auth_size = struct.pack('B', len(action['authorization']))
+            act.auth = []
+            for auth in action['authorization']:
+                act.auth.append((Transaction.name_to_number(auth['actor']), Transaction.name_to_number(auth['permission'])))
 
-        data = action['data']
-        if action['name'] == 'transfer':
-            parameters = Transaction.parse_transfer(data)
-        elif action['name'] == 'voteproducer':
-            parameters = Transaction.parse_vote_producer(data)
-        elif action['name'] == 'buyram':
-            parameters = Transaction.parse_buy_ram(data)
-        elif action['name'] == 'buyrambytes':
-            parameters = Transaction.parse_buy_rambytes(data)
-        elif action['name'] == 'sellram':
-            parameters = Transaction.parse_sell_ram(data)
-        elif action['name'] == 'updateauth':
-            parameters = Transaction.parse_update_auth(data)
-        elif action['name'] == 'deleteauth':
-            parameters = Transaction.parse_delete_auth(data)
-        elif action['name'] == 'refund':
-            parameters = Transaction.parse_refund(data)
-        elif action['name'] == 'linkauth':
-            parameters = Transaction.parse_link_auth(data)
-        elif action['name'] == 'unlinkauth':
-            parameters = Transaction.parse_unlink_auth(data)
-        else:
-            parameters = Transaction.parse_unknown(data)
+            data = action['data']
+            if action['name'] == 'transfer':
+                parameters = Transaction.parse_transfer(data)
+            elif action['name'] == 'voteproducer':
+                parameters = Transaction.parse_vote_producer(data)
+            elif action['name'] == 'buyram':
+                parameters = Transaction.parse_buy_ram(data)
+            elif action['name'] == 'buyrambytes':
+                parameters = Transaction.parse_buy_rambytes(data)
+            elif action['name'] == 'sellram':
+                parameters = Transaction.parse_sell_ram(data)
+            elif action['name'] == 'updateauth':
+                parameters = Transaction.parse_update_auth(data)
+            elif action['name'] == 'deleteauth':
+                parameters = Transaction.parse_delete_auth(data)
+            elif action['name'] == 'refund':
+                parameters = Transaction.parse_refund(data)
+            elif action['name'] == 'linkauth':
+                parameters = Transaction.parse_link_auth(data)
+            elif action['name'] == 'unlinkauth':
+                parameters = Transaction.parse_unlink_auth(data)
+            elif action['name'] == 'newaccount':
+                parameters = Transaction.parse_newaccount(data)
+            elif action['name'] == 'delegatebw':
+                parameters = Transaction.parse_delegate(data)
+            else:
+                parameters = Transaction.parse_unknown(data)
 
-        tx.data_size = Transaction.pack_fc_uint(len(parameters))
-        tx.data = parameters
+            act.data_size = Transaction.pack_fc_uint(len(parameters))
+            act.data = parameters
+
+            tx.actions.append(act)
+
         tx.tx_ext = struct.pack('B', len(body['transaction_extensions']))
         tx.cfd = binascii.unhexlify('00' * 32)
 
-        sha = hashlib.sha256()
-        sha.update(tx.data_size)
-        sha.update(tx.data)
-        print 'Argument checksum ' +  sha.hexdigest()
+        for action in tx.actions:
+            sha = hashlib.sha256()
+            sha.update(action.data_size)
+            sha.update(action.data)
+            print 'Argument checksum ' + sha.hexdigest()
 
         return tx
 
     def encode(self):
         encoder = Encoder()
+        sha = hashlib.sha256()
+
+        sha.update(self.chain_id)
+        sha.update(self.expiration)
+        sha.update(self.ref_block_num)
+        sha.update(self.ref_block_prefix)
+        sha.update(self.net_usage_words)
+        sha.update(self.max_cpu_usage_ms)
+        sha.update(self.delay_sec)
+        sha.update(self.ctx_free_actions_size)
+        sha.update(self.actions_size)
+        for action in self.actions:
+            sha.update(action.account)
+            sha.update(action.name)
+            sha.update(action.auth_size)
+            for auth in action.auth:
+                (auth_actor, permission) = auth
+                sha.update(auth_actor)
+                sha.update(permission)
+
+            sha.update(action.data_size)
+            sha.update(action.data)
+        sha.update(self.tx_ext)
+        sha.update(self.cfd)
+
+        print 'Signing digest ' + sha.hexdigest()
 
         encoder.start()
         encoder.write(self.chain_id, Numbers.OctetString)
@@ -328,15 +383,16 @@ class Transaction:
 
         encoder.write(self.ctx_free_actions_size, Numbers.OctetString)
         encoder.write(self.actions_size, Numbers.OctetString)
-        encoder.write(self.account, Numbers.OctetString)
-        encoder.write(self.name, Numbers.OctetString)
-        encoder.write(self.auth_size, Numbers.OctetString)
-        for auth in self.auth:
-            (auth_actor, permission) = auth
-            encoder.write(auth_actor, Numbers.OctetString)
-            encoder.write(permission, Numbers.OctetString)
-        encoder.write(self.data_size, Numbers.OctetString)
-        encoder.write(self.data, Numbers.OctetString)
+        for action in self.actions:
+            encoder.write(action.account, Numbers.OctetString)
+            encoder.write(action.name, Numbers.OctetString)
+            encoder.write(action.auth_size, Numbers.OctetString)
+            for auth in action.auth:
+                (auth_actor, permission) = auth
+                encoder.write(auth_actor, Numbers.OctetString)
+                encoder.write(permission, Numbers.OctetString)
+            encoder.write(action.data_size, Numbers.OctetString)
+            encoder.write(action.data, Numbers.OctetString)
         encoder.write(self.tx_ext, Numbers.OctetString)
         encoder.write(self.cfd, Numbers.OctetString)
 

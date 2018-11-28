@@ -56,12 +56,16 @@ typedef enum txProcessingState_e {
 
 typedef struct txProcessingContext_t {
     txProcessingState_e state;
+    bool actionReady;
+    bool confirmProcessing;
     cx_sha256_t *sha256;
     cx_sha256_t *dataSha256;
     uint32_t currentFieldLength;
     uint32_t currentFieldPos;
     uint32_t currentAutorizationIndex;
     uint32_t currentAutorizationNumber;
+    uint32_t currentActionIndex;
+    uint32_t currentActionNumer;
     uint32_t currentActionDataBufferLength;
     bool processingField;
     uint8_t tlvBuffer[5];
@@ -78,16 +82,18 @@ typedef struct txProcessingContext_t {
 } txProcessingContext_t;
 
 typedef enum parserStatus_e {
+    STREAM_FAULT,
     STREAM_PROCESSING,
+    STREAM_ACTION_READY,
+    STREAM_CONFIRM_PROCESSING,
     STREAM_FINISHED,
-    STREAM_FAULT
 } parserStatus_e;
 
 void initTxContext(
     txProcessingContext_t *context, 
     cx_sha256_t *sha256, 
     cx_sha256_t *dataSha256,
-    txProcessingContent_t *processingContent, 
+    txProcessingContent_t *processingContent,
     uint8_t dataAllowed
 );
 parserStatus_e parseTx(txProcessingContext_t *context, uint8_t *buffer, uint32_t length);

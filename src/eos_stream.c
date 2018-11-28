@@ -41,6 +41,7 @@
 #define EOSIO_REFUND         0xBA97A9A400000000
 #define EOSIO_LINK_AUTH      0x8BA7036B2D000000
 #define EOSIO_UNLINK_AUTH    0xD4E2E9C0DACB4000
+#define EOSIO_NEW_ACCOUNT    0x9AB864229A9E4000
 
 void initTxContext(txProcessingContext_t *context, 
                    cx_sha256_t *sha256, 
@@ -180,6 +181,94 @@ static void processUnknownAction(txProcessingContext_t *context) {
     context->content->argumentCount = 3;  
 }
 
+static void processEosioNewAccountAction(txProcessingContext_t *context) {
+    uint8_t *buffer = context->actionDataBuffer;
+    uint32_t bufferLength = context->currentActionDataBufferLength;
+    
+    // Offset to auth structures: owner, active
+    buffer += 2 * sizeof(name_t); bufferLength -= 2 * sizeof(name_t);
+    
+    // Read owner key threshold
+    uint32_t threshold = 0;
+    os_memmove(&threshold, buffer, sizeof(threshold));
+    if (threshold != 1) {
+        PRINTF("Owner Threshold should be 1");
+        THROW(EXCEPTION);
+    }
+    buffer += sizeof(threshold); bufferLength -= sizeof(threshold);
+    
+    uint32_t size = 0;
+    uint32_t read = unpack_variant32(buffer, bufferLength, &size);
+    if (size != 1) {
+        PRINTF("Owner key must be 1");
+        THROW(EXCEPTION);
+    }
+    buffer += read; bufferLength -= read;
+    // Offset to key weight
+    buffer += 1 + sizeof(public_key_t); bufferLength -= 1 + sizeof(public_key_t);
+    uint16_t weight = 0;
+    os_memmove(&weight, buffer, sizeof(weight));
+    if (weight != 1) {
+        PRINTF("Owner key weight must be 1");
+        THROW(EXCEPTION);
+    }
+    buffer += sizeof(weight); bufferLength -= sizeof(weight);
+    
+    read = unpack_variant32(buffer, bufferLength, &size);
+    if (size != 0) {
+        PRINTF("No accounts allowed");
+        THROW(EXCEPTION);
+    }
+    buffer += read; bufferLength -= read;
+    read = unpack_variant32(buffer, bufferLength, &size);
+    if (size != 0) {
+        PRINTF("No delays allowed");
+        THROW(EXCEPTION);
+    }
+    buffer += read; bufferLength -= read;
+    
+    // process Active authorization
+    // -----------------------------------
+    
+    os_memmove(&threshold, buffer, sizeof(threshold));
+    if (threshold != 1) {
+        PRINTF("Active Threshold should be 1");
+        THROW(EXCEPTION);
+    }
+    buffer += sizeof(threshold); bufferLength -= sizeof(threshold);
+    
+    read = unpack_variant32(buffer, bufferLength, &size);
+    if (size != 1) {
+        PRINTF("Active key must be 1");
+        THROW(EXCEPTION);
+    }
+    buffer += read; bufferLength -= read;
+    // Offset to key weight
+    buffer += 1 + sizeof(public_key_t); bufferLength -= 1 + sizeof(public_key_t);
+    weight = 0;
+    os_memmove(&weight, buffer, sizeof(weight));
+    if (weight != 1) {
+        PRINTF("Active key weight must be 1");
+        THROW(EXCEPTION);
+    }
+    buffer += sizeof(weight); bufferLength -= sizeof(weight);
+    
+    read = unpack_variant32(buffer, bufferLength, &size);
+    if (size != 0) {
+        PRINTF("No accounts allowed");
+        THROW(EXCEPTION);
+    }
+    buffer += read; bufferLength -= read;
+    read = unpack_variant32(buffer, bufferLength, &size);
+    if (size != 0) {
+        PRINTF("No delays allowed");
+        THROW(EXCEPTION);
+    }
+    buffer += read; bufferLength -= read;
+    
+    context->content->argumentCount = 4;
+}
+
 void printArgument(uint8_t argNum, txProcessingContext_t *context) {
     name_t contractName = context->contractName;
     name_t actionName = context->contractActionName;
@@ -227,6 +316,9 @@ void printArgument(uint8_t argNum, txProcessingContext_t *context) {
         case EOSIO_UNLINK_AUTH:
             parseUnlinkAuth(buffer, bufferLength, argNum, arg);
             break;
+        case EOSIO_NEW_ACCOUNT:
+            parseNewAccount(buffer, bufferLength, argNum, arg);
+            break;
         default:
             if (context->dataAllowed == 1) {
                 parseUnknownAction(context->dataChecksum, sizeof(context->dataChecksum), argNum, arg);
@@ -260,6 +352,7 @@ static bool isKnownAction(txProcessingContext_t *context) {
         case EOSIO_DELETE_AUTH:
         case EOSIO_LINK_AUTH:
         case EOSIO_UNLINK_AUTH:
+        case EOSIO_NEW_ACCOUNT:
             return true;   
         } 
     }
@@ -351,7 +444,6 @@ static void processZeroSizeField(txProcessingContext_t *context) {
  * Process Action Number Field. Except hashing the data, function
  * caches an incomming data. So, when all bytes for particulat field are received
  * do additional processing: Read actual number of actions encoded in buffer.
- * Throw exception if number is not '1'.
 */
 static void processActionListSizeField(txProcessingContext_t *context) {
     if (context->currentFieldPos < context->currentFieldLength) {
@@ -372,17 +464,17 @@ static void processActionListSizeField(txProcessingContext_t *context) {
     }
 
     if (context->currentFieldPos == context->currentFieldLength) {
-        uint32_t sizeValue = 0;
-        unpack_variant32(context->sizeBuffer, context->currentFieldPos + 1, &sizeValue);
-        if (sizeValue != 1) {
-            PRINTF("processActionListSizeField Action Number must be 1\n");
-            THROW(EXCEPTION);
-        }
+        unpack_variant32(context->sizeBuffer, context->currentFieldPos + 1, &context->currentActionNumer);
+        context->currentActionIndex = 0;
+        
         // Reset size buffer
         os_memset(context->sizeBuffer, 0, sizeof(context->sizeBuffer));
 
         context->state++;
         context->processingField = false;
+        if (context->currentActionNumer > 1) {
+            context->confirmProcessing = true;
+        }
     }
 }
 
@@ -565,8 +657,16 @@ static void processUnknownActionData(txProcessingContext_t *context) {
 
         processUnknownAction(context);
 
-        context->state = TLV_TX_EXTENSION_LIST_SIZE;
+        if (++context->currentActionIndex < context->currentActionNumer) {
+            context->state = TLV_ACTION_ACCOUNT;
+        } else {
+            context->state = TLV_TX_EXTENSION_LIST_SIZE;
+        }
+
         context->processingField = false;
+        context->actionReady = true;
+        
+        cx_sha256_init(context->dataSha256);
     }
 }
 
@@ -632,18 +732,35 @@ static void processActionData(txProcessingContext_t *context) {
             case EOSIO_UNLINK_AUTH:
                 processEosioUnlinkAuth(context);
                 break;
+            case EOSIO_NEW_ACCOUNT:
+                processEosioNewAccountAction(context);
+                break;
             default:
                 THROW(EXCEPTION);
             }
         }
-
-        context->state = TLV_TX_EXTENSION_LIST_SIZE;
+        
+        if (++context->currentActionIndex < context->currentActionNumer) {
+            context->state = TLV_ACTION_ACCOUNT;
+        } else {
+            context->state = TLV_TX_EXTENSION_LIST_SIZE;
+        }
+        
         context->processingField = false;
+        context->actionReady = true;
     }
 }
 
 static parserStatus_e processTxInternal(txProcessingContext_t *context) {
     for(;;) {
+        if (context->confirmProcessing) {
+            context->confirmProcessing = false;
+            return STREAM_CONFIRM_PROCESSING;
+        }
+        if (context->actionReady) {
+            context->actionReady = false;
+            return STREAM_ACTION_READY;
+        }
         if (context->state == TLV_DONE) {
             return STREAM_FINISHED;
         }
@@ -790,7 +907,7 @@ static parserStatus_e processTxInternal(txProcessingContext_t *context) {
  * [EXPIRATION][REF_BLOCK_NUM][REF_BLOCK_PREFIX][MAX_NET_USAGE_WORDS][MAX_CPU_USAGE_MS][DELAY_SEC]
  * 
  * CTX_FREE_ACTION_NUMBER theoretically is not fixed due to serialization. Ledger accepts only 0 as encoded value.
- * ACTION_NUMBER theoretically is not fixed due to serialization. Ledger accepts only 1 as encoded value.
+ * ACTION_NUMBER theoretically is not fixed due to serialization.
  * 
  * ACTION size may vary as authorization list and action data is dynamic:
  * [ACCOUNT][NAME][AUTHORIZATION_NUMBER][AUTHORIZATION 0][AUTHORIZATION 1]..[AUTHORIZATION N][ACTION_DATA]
@@ -815,8 +932,10 @@ parserStatus_e parseTx(txProcessingContext_t *context, uint8_t *buffer, uint32_t
 #else
     BEGIN_TRY {
         TRY {
-            context->workBuffer = buffer;
-            context->commandLength = length;
+            if (context->commandLength == 0) {
+                context->workBuffer = buffer;
+                context->commandLength = length;
+            }
             result = processTxInternal(context);
         }
         CATCH_OTHER(e) {

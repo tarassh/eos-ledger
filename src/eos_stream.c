@@ -665,6 +665,8 @@ static void processUnknownActionData(txProcessingContext_t *context) {
 
         context->processingField = false;
         context->actionReady = true;
+        
+        cx_sha256_init(context->dataSha256);
     }
 }
 

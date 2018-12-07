@@ -19,6 +19,17 @@
           }
         ],
         "data": "test"
+      },
+      {
+        "account": "bazcontract",
+        "name": "fooaction",
+        "authorization": [
+          {
+            "actor": "cryptofairy1",
+            "permission": "active"
+          }
+        ],
+        "data": "deadbeef"
       }
     ],
     "transaction_extensions": []

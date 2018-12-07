@@ -15,6 +15,7 @@
 		673E26FC217333930028C96F /* eos_parse.c in Sources */ = {isa = PBXBuildFile; fileRef = 673E26F6217333920028C96F /* eos_parse.c */; };
 		673E26FD217333930028C96F /* eos_parse_token.c in Sources */ = {isa = PBXBuildFile; fileRef = 673E26FA217333930028C96F /* eos_parse_token.c */; };
 		673E2700217517A50028C96F /* eos_parse_unknown.c in Sources */ = {isa = PBXBuildFile; fileRef = 673E26FE217517A50028C96F /* eos_parse_unknown.c */; };
+		67786CFA2191C5080047C22D /* cx.c in Sources */ = {isa = PBXBuildFile; fileRef = 67786CF92191C5080047C22D /* cx.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -48,6 +49,7 @@
 		673E26FA217333930028C96F /* eos_parse_token.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = eos_parse_token.c; path = ../src/eos_parse_token.c; sourceTree = "<group>"; };
 		673E26FE217517A50028C96F /* eos_parse_unknown.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = eos_parse_unknown.c; path = ../src/eos_parse_unknown.c; sourceTree = "<group>"; };
 		673E26FF217517A50028C96F /* eos_parse_unknown.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = eos_parse_unknown.h; path = ../src/eos_parse_unknown.h; sourceTree = "<group>"; };
+		67786CF92191C5080047C22D /* cx.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = cx.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -97,6 +99,7 @@
 				67094455211E2A6C00B8C05E /* main.c */,
 				67094465211E2CC200B8C05E /* os.h */,
 				67094466211E2D1100B8C05E /* cx.h */,
+				67786CF92191C5080047C22D /* cx.c */,
 			);
 			path = desktop;
 			sourceTree = "<group>";
@@ -158,6 +161,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				673E26FD217333930028C96F /* eos_parse_token.c in Sources */,
+				67786CFA2191C5080047C22D /* cx.c in Sources */,
 				67094456211E2A6C00B8C05E /* main.c in Sources */,
 				673E26FB217333930028C96F /* eos_parse_eosio.c in Sources */,
 				67094463211E2AB900B8C05E /* eos_stream.c in Sources */,
@@ -283,7 +287,12 @@
 		6709445A211E2A6C00B8C05E /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
+				"HEADER_SEARCH_PATHS[arch=*]" = /usr/local/opt/openssl/include;
+				"INFOPLIST_PREPROCESSOR_DEFINITIONS[sdk=*]" = DEBUG_APP;
+				"LIBRARY_SEARCH_PATHS[arch=*]" = /usr/local/opt/openssl/lib;
+				"OTHER_LDFLAGS[arch=*]" = "-v";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -291,7 +300,10 @@
 		6709445B211E2A6C00B8C05E /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
+				"HEADER_SEARCH_PATHS[arch=*]" = /usr/local/opt/openssl/include;
+				"LIBRARY_SEARCH_PATHS[arch=*]" = /usr/local/opt/openssl/lib;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;

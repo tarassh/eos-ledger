@@ -20,6 +20,7 @@
 #include "cx.h"
 #include "eos_types.h"
 #include <stdbool.h>
+#include <string.h>
 
 void printString(const char in[], const char fieldName[], actionArgument_t *arg) {
     uint32_t inLength = strlen(in);

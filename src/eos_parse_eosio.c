@@ -340,3 +340,47 @@ void parseUnlinkAuth(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, act
         return;
     }
 }
+
+void parseNewAccount(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, actionArgument_t *arg) {
+    uint32_t read = 0;
+    uint32_t written = 0;
+    
+    if (argNum == 0) {
+        parseNameField(buffer, bufferLength, "Creator", arg, &read, &written);
+        return;
+    }
+    
+    if (argNum == 1) {
+        buffer += sizeof(name_t); bufferLength -= sizeof(name_t);
+        parseNameField(buffer, bufferLength, "Account", arg, &read, &written);
+        return;
+    }
+    
+    // Offset to auth structures: owner, active
+    buffer += 2 * sizeof(name_t); bufferLength -= 2 * sizeof(name_t);
+    // offset to owner key; skip threshold
+    buffer += sizeof(uint32_t); bufferLength -= sizeof(uint32_t);
+    // skip key counter and key type
+    buffer += 2; bufferLength -= 2;
+    
+    if (argNum == 2) {
+        parsePublicKeyField(buffer, bufferLength, "Owner key", arg, &read, &written);
+        return;
+    }
+    // skip public key
+    buffer += sizeof(public_key_t) + sizeof(uint16_t); bufferLength -= sizeof(public_key_t) + sizeof(uint16_t);
+    // skip accounts, delays
+    // Offset to "active"
+    buffer += 2; bufferLength -= 2;
+    
+    // skip threshold
+    // offset to active key; skip threshold
+    buffer += sizeof(uint32_t); bufferLength -= sizeof(uint32_t);
+    // skip key counter and key type
+    buffer += 2; bufferLength -= 2;
+    
+    if (argNum == 3) {
+        parsePublicKeyField(buffer, bufferLength, "Active key", arg, &read, &written);
+        return;
+    }
+}

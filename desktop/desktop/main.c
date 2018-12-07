@@ -16,6 +16,7 @@
 txProcessingContext_t txProcessingCtx;
 txProcessingContent_t txContent;
 cx_sha256_t sha256;
+cx_sha256_t sha256_arg;
 
 static int hex_to_bytes(
                  const char *hex,
@@ -40,8 +41,30 @@ static int hex_to_bytes(
     return 0;
 }
 
+bool onActionReady(txProcessingContext_t *context) {
+    printf("--------------- Confirm action #%d ---------------\n", context->currentActionIndex);
+    
+    puts("Contract");
+    puts(context->content->contract);
+    puts("\n");
+    
+    puts("Action");
+    puts(context->content->action);
+    puts("\n");
+    
+    for (uint8_t i = 0; i < context->content->argumentCount; ++i) {
+        printArgument(i, context);
+        puts(context->content->arg.label);
+        puts(context->content->arg.data);
+        
+        puts("\n");
+    }
+    
+    return true;
+}
+
 int main(int argc, const char * argv[]) {
-#define ARBITRARY 1
+#define NEWACCOUNT 1
 #ifdef VOTE
    const char tx[] = "0420cf057bbfb72640471fd910bcb67639c22df9f92470936cddc1ade0e2f2e7dc4f0404d0d3495b040227190404f0f48eb204010004010004010004010004010104080000000000ea305504087015d289deaa32dd040101040810fc7566d15cfd45040800000000a8ed32320402a1010481a110fc7566d15cfd4500000000000000001280a932d3e5a9d8351030555d4db7b23b10f0a42ed25cfd45206952ea2e413055204dba2a63693055104208c1386c3055e0b3bbb4656d3055500f9bee3975305590293dd37577305500118d472d833055202932c94c833055301b9a744e83305550cf55d3a888305570d5be0a239330558021a2b761b7305580af9134fbb830551029adee50dd3055e0b3dbe632ec305504010004200000000000000000000000000000000000000000000000000000000000000000";
 #elif PROXY
@@ -53,6 +76,8 @@ int main(int argc, const char * argv[]) {
     const char tx[] = "0420cf057bbfb72640471fd910bcb67639c22df9f92470936cddc1ade0e2f2e7dc4f0404a0a9495b040227190404f0f48eb204010004010004010004010004010104080000000000ea305504080040cbdaa8aca24a040101040810fc7566d15cfd45040800000000a8ed3232040110041010fc7566d15cfd4500000000a8ed323204010004200000000000000000000000000000000000000000000000000000000000000000";
 #elif ARBITRARY
     const char tx[] = "0420cf057bbfb72640471fd910bcb67639c22df9f92470936cddc1ade0e2f2e7dc4f0404d0d3495b040227190404f0f48eb20401000401000401000401000401010408003232374f8a285d0408000098d46564ae39040101040810fc7566d15cfd45040800000000a8ed32320401050405047465737404010004200000000000000000000000000000000000000000000000000000000000000000";
+#elif NEWACCOUNT
+    const char tx[] = "0420cf057bbfb72640471fd910bcb67639c22df9f92470936cddc1ade0e2f2e7dc4f0404a0a9495b040227190404f0f48eb204010004010004010004010004010304080000000000ea3055040800409e9a2264b89a040101040810fc7566d15cfd45040800000000a8ed3232040166046610fc7566d15cfd450000f02a5e230f3d01000000010003b6d4fb38dba56d59623c5e2be38b0cdf63f7958cd61d27b1044271bb04cb63c70100000001000000010003b6d4fb38dba56d59623c5e2be38b0cdf63f7958cd61d27b1044271bb04cb63c70100000004080000000000ea3055040800b0cafe4873bd3e040101040810fc7566d15cfd45040800000000a8ed3232040114041410fc7566d15cfd450000f02a5e230f3d0010000004080000000000ea3055040800003f2a1ba6a24a040101040810fc7566d15cfd45040800000000a8ed3232040131043110fc7566d15cfd450000f02a5e230f3d102700000000000004454f5300000000881300000000000004454f53000000000104010004200000000000000000000000000000000000000000000000000000000000000000";
 #else
     const char tx[] = "0420cf057bbfb72640471fd910bcb67639c22df9f92470936cddc1ade0e2f2e7dc4f0404a0a9495b040227190404f0f48eb204010004010004010004010004010104080000000000ea30550408000000409a1ba3c2040101040810fc7566d15cfd45040800000000a8ed3232040110041010fc7566d15cfd45000400000000000004010004200000000000000000000000000000000000000000000000000000000000000000";
 #endif
@@ -60,16 +85,32 @@ int main(int argc, const char * argv[]) {
     uint8_t buffer[strlen(tx)/2];
     hex_to_bytes(tx, strlen(tx), buffer, sizeof(buffer));
     
-    initTxContext(&txProcessingCtx, &sha256, &txContent, 0);
-    parseTx(&txProcessingCtx, buffer, sizeof(buffer));
+    initTxContext(&txProcessingCtx, &sha256, &sha256_arg, &txContent, 1);
+    uint8_t status = parseTx(&txProcessingCtx, buffer, sizeof(buffer));
     
-    for (uint8_t i = 0; i < txProcessingCtx.content->argumentCount; ++i) {
-        printArgument(i, &txProcessingCtx);
-        puts(txContent.arg.label);
-        puts(txContent.arg.data);
+    do {
+        if (status == STREAM_FAULT) {
+            printf("FAILED");
+            return 1;
+        }
         
-        puts("\n");
+        if (status == STREAM_ACTION_READY) {
+            onActionReady(&txProcessingCtx);
+        }
+        
+        status = parseTx(&txProcessingCtx, buffer, sizeof(buffer));
+        
+    } while (status != STREAM_FINISHED);
+    
+    
+    unsigned char digest[32] = {0};
+    cx_hash(&sha256.header, CX_LAST, digest, 0, digest);
+    printf("Digest: ");
+    for(int i = 0; i < 32; i++) {
+        printf("%x", digest[i]);
     }
+    
+    puts("");
     
     return 0;
 }

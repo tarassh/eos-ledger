@@ -17,13 +17,14 @@
 
 #include "eos_parse_unknown.h"
 #include "os.h"
+#include "eos_utils.h"
 #include <string.h>
 
 void parseUnknownAction(uint8_t *buffer, uint32_t bufferLength, uint8_t argNum, actionArgument_t *arg) {
     if (argNum == 0) {
         printString("Arbitrary Data", "WARNING", arg);
     } else if (argNum == 1) {
-        printString("Signing may be dangerous and on your own risk", "WARNING", arg);
+        printString("Verify checksum", "WARNING", arg);
     } else if (argNum == 2) {
         char checksum[65] = { 0 };
         array_hexstr(checksum, buffer, bufferLength);

@@ -106,13 +106,12 @@ ux_state_t G_ux;
 bolos_ux_params_t G_ux_params;
 #else // TARGET_NANOX
 ux_state_t ux;
+#endif // TARGET_NANOX
 // display stepped screens
 unsigned int ux_step;
 unsigned int ux_step_count;
-#endif // TARGET_NANOX
 
-typedef struct internalStorage_t
-{
+typedef struct internalStorage_t {
     uint8_t dataAllowed;
     uint8_t initialized;
 } internalStorage_t;
@@ -558,13 +557,14 @@ UX_FLOW_DEF_VALID(
       &C_icon_dashboard,
       "Quit",
     });
-const ux_flow_step_t *        const ux_idle_flow [] = {
+
+UX_FLOW(
+    ux_idle_flow,
     &ux_idle_flow_1_step,
     &ux_idle_flow_2_step,
     &ux_idle_flow_3_step,
-    &ux_idle_flow_4_step,
-    FLOW_END_STEP,
-};
+    &ux_idle_flow_4_step
+    );
 
 UX_FLOW_DEF_VALID(
     ux_settings_flow_1_step,
@@ -586,11 +586,11 @@ UX_FLOW_DEF_VALID(
       "Back",
     });
 
-const ux_flow_step_t *        const ux_settings_flow [] = {
+UX_FLOW(
+    ux_settings_flow, 
     &ux_settings_flow_1_step,
-    &ux_settings_flow_2_step,
-    FLOW_END_STEP,
-};
+    &ux_settings_flow_2_step
+    );
 
 void display_settings() {
   strcpy(confirmLabel, (N_storage.dataAllowed ? "Allowed" : "NOT Allowed"));
@@ -637,13 +637,78 @@ UX_FLOW_DEF_VALID(
       "Reject",
     });
 
-const ux_flow_step_t *        const ux_display_public_flow [] = {
-  &ux_display_public_flow_1_step,
-  &ux_display_public_flow_2_step,
-  &ux_display_public_flow_3_step,
-  &ux_display_public_flow_4_step,
-  FLOW_END_STEP,
-};
+UX_FLOW(
+    ux_display_public_flow,
+    &ux_display_public_flow_1_step,
+    &ux_display_public_flow_2_step,
+    &ux_display_public_flow_3_step,
+    &ux_display_public_flow_4_step
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+
+void initialize_data();
+
+UX_FLOW_DEF_NOCB(
+    ux_sign_flow_1_step,
+    pnn,
+    {
+      &C_icon_certificate,
+      "Confirm",
+      "Transaction",
+    });
+UX_FLOW_DEF_NOCB(
+    ux_sign_flow_2_step,
+    bnnn_paging,
+    {
+      .title = "Contract",
+      .text = txContent.contract,
+    });
+UX_FLOW_DEF_NOCB(
+    ux_sign_flow_3_step,
+    bnnn_paging,
+    {
+      .title = "Action",
+      .text = txContent.action,
+    });
+
+UX_STEP_NOCB_INIT(
+    ux_sign_flow_4_step,
+    bnnn_paging,
+    printArgument(ux_step, &txProcessingCtx),
+    {
+      .title = txContent.arg.label,
+      .text = txContent.arg.data,
+    });
+
+UX_FLOW_DEF_VALID(
+    ux_sign_flow_5_step,
+    pbb,
+    io_seproxyhal_touch_tx_ok(NULL),
+    {
+      &C_icon_validate_14,
+      "Sign",
+      "transaction",
+    });
+UX_FLOW_DEF_VALID(
+    ux_sign_flow_6_step,
+    pbb,
+    io_seproxyhal_touch_tx_cancel(NULL),
+    {
+      &C_icon_crossmark,
+      "Cancel",
+      "signature",
+    });
+
+UX_FLOW(
+    ux_sign_flow, 
+    &ux_sign_flow_1_step,
+    &ux_sign_flow_2_step,
+    &ux_sign_flow_3_step,
+    &ux_sign_flow_4_step,
+    &ux_sign_flow_5_step,
+    &ux_sign_flow_6_step
+    );
 
 #endif // #if defined(TARGET_NANOX)
 
@@ -1060,9 +1125,11 @@ void handleSign(uint8_t p1, uint8_t p2, uint8_t *workBuffer,
 
         break;
     case STREAM_ACTION_READY:
-#if defined(TARGET_NANOS)
         ux_step = 0;
-        ux_step_count = 3 + txContent.argumentCount;
+        ux_step_count = txContent.argumentCount;
+#if defined(TARGET_NANOS)
+        
+        ux_step_count += 3;
         if (txProcessingCtx.currentActionNumer > 1) {
             snprintf((char *)confirmLabel, sizeof(confirmLabel), "Action #%d", txProcessingCtx.currentActionIndex);
         } else {
@@ -1071,6 +1138,7 @@ void handleSign(uint8_t p1, uint8_t p2, uint8_t *workBuffer,
         UX_DISPLAY(ui_single_action_tx_approval_nanos, ui_single_action_tx_approval_prepro);
 #elif defined(TARGET_NANOX)
 // TODO: add nano x support
+        ux_flow_init(0, ux_sign_flow, NULL);
 #endif
 
         *flags |= IO_ASYNCH_REPLY;
@@ -1286,6 +1354,15 @@ unsigned char io_event(unsigned char channel)
                     // redisplay screen
                     UX_REDISPLAY();
                 }
+            }
+#elif defined(TARGET_NANOX)
+            // TODO: add something more to check if we are on data step.
+            if (ux_step_count)
+            {
+                // prepare next screen
+                ux_step = (ux_step + 1) % ux_step_count;
+                // redisplay screen
+                ux_flow_relayout();
             }
 #endif // TARGET_NANOS
         });

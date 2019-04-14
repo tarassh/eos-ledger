@@ -23,7 +23,7 @@ include $(BOLOS_SDK)/Makefile.defines
 
 APPVERSION_M=1
 APPVERSION_N=2
-APPVERSION_P=1
+APPVERSION_P=2
 APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
 
 APPNAME = Eos
@@ -81,14 +81,12 @@ endif
 ##############
 #  Compiler  #
 ##############
-#GCCPATH   := $(BOLOS_ENV)/gcc-arm-none-eabi-5_3-2016q1/bin/
-#CLANGPATH := $(BOLOS_ENV)/clang-arm-fropi/bin/
 CC       := $(CLANGPATH)clang 
 
 #CFLAGS   += -O0
 CFLAGS   += -O3 -Os
 
-AS     := $(GCCPATH)arm-none-eabi-gcc
+AS       := $(GCCPATH)arm-none-eabi-gcc
 
 LD       := $(GCCPATH)arm-none-eabi-gcc
 LDFLAGS  += -O3 -Os

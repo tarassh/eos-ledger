@@ -558,7 +558,7 @@ UX_FLOW_DEF_VALID(
     pb,
     os_sched_exit(-1),
     {
-      &C_icon_dashboard,
+      &C_icon_dashboard_x,
       "Quit",
     });
 
@@ -586,7 +586,7 @@ UX_FLOW_DEF_VALID(
     pb,
     ui_idle(),
     {
-      &C_icon_back,
+      &C_icon_back_x,
       "Back",
     });
 

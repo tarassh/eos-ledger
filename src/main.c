@@ -106,16 +106,13 @@ volatile char confirmLabel[32];
 ux_state_t G_ux;
 bolos_ux_params_t G_ux_params;
 
-int ux_step;
-
 #else // TARGET_NANOX
 
 ux_state_t ux;
-unsigned int ux_step;
 
 #endif // TARGET_NANOX
 // display stepped screens
-
+unsigned int ux_step;
 unsigned int ux_step_count;
 
 typedef struct internalStorage_t {
@@ -658,29 +655,33 @@ UX_FLOW(
 #define STATE_VARIABLE 1
 #define STATE_RIGHT_BORDER 2
 
-void display_next_state(uint8_t new_state);
+volatile char confirm_text1[16];
+volatile char confirm_text2[16];
+
+void display_next_state(uint8_t state);
+void ux_single_action_sign_flow_ok_pressed();
 
 UX_FLOW_DEF_NOCB(
-    ux_sign_flow_1_step,
+    ux_single_action_sign_flow_1_step,
     pnn,
     {
       &C_icon_certificate,
       "Review",
-      "Transaction",
+      confirmLabel,
     });
 UX_FLOW_DEF_NOCB(
-    ux_sign_flow_2_step,
-    bnnn_paging,
+    ux_single_action_sign_flow_2_step,
+    bn,
     {
-      .title = "Contract",
-      .text = txContent.contract,
+      "Contract",
+      txContent.contract,
     });
 UX_FLOW_DEF_NOCB(
-    ux_sign_flow_3_step,
-    bnnn_paging,
+    ux_single_action_sign_flow_3_step,
+    bn,
     {
-      .title = "Action",
-      .text = txContent.action,
+      "Action",
+      txContent.action,
     });
 UX_STEP_INIT(
     ux_init_left_border,
@@ -691,7 +692,7 @@ UX_STEP_INIT(
     });
 
 UX_STEP_NOCB_INIT(
-    ux_sign_flow_variable_step,
+    ux_single_action_sign_flow_variable_step,
     bnnn_paging,
     {
         display_next_state(STATE_VARIABLE);
@@ -710,16 +711,16 @@ UX_STEP_INIT(
     });
 
 UX_FLOW_DEF_VALID(
-    ux_sign_flow_7_step,
+    ux_single_action_sign_flow_7_step,
     pbb,
-    io_seproxyhal_touch_tx_ok(NULL),
+    ux_single_action_sign_flow_ok_pressed(),
     {
       &C_icon_validate_14,
-      "Sign",
-      "transaction",
+      confirm_text1,
+      confirm_text2,
     });
 UX_FLOW_DEF_VALID(
-    ux_sign_flow_8_step,
+    ux_single_action_sign_flow_8_step,
     pbb,
     io_seproxyhal_touch_tx_cancel(NULL),
     {
@@ -729,58 +730,162 @@ UX_FLOW_DEF_VALID(
     });
 
 UX_FLOW(
-    ux_sign_flow, 
-    &ux_sign_flow_1_step,
-    &ux_sign_flow_2_step,
-    &ux_sign_flow_3_step,
+    ux_single_action_sign_flow, 
+    &ux_single_action_sign_flow_1_step,
+    &ux_single_action_sign_flow_2_step,
+    &ux_single_action_sign_flow_3_step,
     &ux_init_left_border,
-    &ux_sign_flow_variable_step,
+    &ux_single_action_sign_flow_variable_step,
     &ux_init_right_border,
-    &ux_sign_flow_7_step,
-    &ux_sign_flow_8_step
+    &ux_single_action_sign_flow_7_step,
+    &ux_single_action_sign_flow_8_step
 );
 
-void display_next_state(uint8_t new_state) 
+void display_next_state(uint8_t state) 
 {
-    if (new_state == STATE_LEFT_BORDER)
+    if (state == STATE_LEFT_BORDER)
     {
-        if (ux_step < 0)
+        if (ux_step == 0)
         {
-            ux_step = 0;
+            ux_step = 1;
             ux_flow_next();
         }
-        else if (ux_step == 0) 
+        else if (ux_step == 1) 
         {
             --ux_step;
             ux_flow_prev();
         }
-        else if (ux_step > 0)
+        else if (ux_step > 1)
         {
             --ux_step;
             ux_flow_next();
         }
     }
-    else if (new_state == STATE_VARIABLE)
+    else if (state == STATE_VARIABLE)
     {
-        printArgument(ux_step, &txProcessingCtx);
+        printArgument(ux_step-1, &txProcessingCtx);
     }
-    else if (new_state == STATE_RIGHT_BORDER)
+    else if (state == STATE_RIGHT_BORDER)
     {
-        if (ux_step < ux_step_count-1)
+        if (ux_step < ux_step_count)
         {
             ++ux_step;
             ux_flow_prev();
         }
-        else if (ux_step == ux_step_count-1)
+        else if (ux_step == ux_step_count)
         {
             ++ux_step;
             ux_flow_next();
         }
-        else if (ux_step > ux_step_count-1)
+        else if (ux_step > ux_step_count)
         {
-            ux_step = ux_step_count-1;
+            ux_step = ux_step_count;
             ux_flow_prev();
         }
+    }
+}
+
+void ux_single_action_sign_flow_ok_pressed() 
+{
+    parserStatus_e txResult = parseTx(&txProcessingCtx, NULL, 0);
+    switch (txResult) {
+    case STREAM_ACTION_READY:
+        ux_step = 0;
+        ux_step_count = txContent.argumentCount;
+        if (txProcessingCtx.currentActionNumer > 1) {
+            snprintf((char *)confirmLabel, sizeof(confirmLabel), "Action #%d", txProcessingCtx.currentActionIndex);
+        }
+        strcpy((char *)confirm_text1, txProcessingCtx.currentActionIndex == txProcessingCtx.currentActionNumer ? "Sign" : "Accept");
+        strcpy((char *)confirm_text2, txProcessingCtx.currentActionIndex == txProcessingCtx.currentActionNumer ? "transaction" : "and review next");
+
+        ux_flow_init(0, ux_single_action_sign_flow, NULL);
+        break;
+    case STREAM_PROCESSING:
+        io_exchange_with_code(0x9000, 0);
+        // Display back the original UX
+        ui_idle();
+        break;
+    case STREAM_FINISHED:
+        io_seproxyhal_touch_tx_ok(NULL);
+        break;
+    default:
+        io_exchange_with_code(0x6A80, 0);
+        // Display back the original UX
+        ui_idle();
+        break;
+    }
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+
+void ux_multiple_action_sign_flow_ok_pressed();
+
+UX_FLOW_DEF_NOCB(
+    ux_multiple_action_sign_flow_1_step,
+    pnn,
+    {
+      &C_icon_certificate,
+      "Review",
+      "Transaction",
+    });
+UX_FLOW_DEF_NOCB(
+    ux_multiple_action_sign_flow_2_step,
+    bn, //pnn,
+    {
+      "With",
+      actionCounter,
+    });
+UX_FLOW_DEF_VALID(
+    ux_multiple_action_sign_flow_3_step,
+    pbb,
+    ux_multiple_action_sign_flow_ok_pressed(),
+    {
+      &C_icon_validate_14,
+      "Continue",
+      "review"
+    });
+UX_FLOW_DEF_VALID(
+    ux_multiple_action_sign_flow_4_step,
+    pbb,
+    io_seproxyhal_touch_tx_cancel(NULL),
+    {
+      &C_icon_crossmark,
+      "Cancel",
+      "review",
+    });
+
+UX_FLOW(
+    ux_multiple_action_sign_flow, 
+    &ux_multiple_action_sign_flow_1_step,
+    &ux_multiple_action_sign_flow_2_step,
+    &ux_multiple_action_sign_flow_3_step,
+    &ux_multiple_action_sign_flow_4_step
+);
+
+void ux_multiple_action_sign_flow_ok_pressed()
+{
+    parserStatus_e txResult = parseTx(&txProcessingCtx, NULL, 0);
+    switch (txResult) {
+    case STREAM_ACTION_READY:
+        ux_step = 0;
+        ux_step_count = txContent.argumentCount;
+        // TODO: proper redisplya
+        // UX_REDISPLAY();
+        break;
+    case STREAM_PROCESSING:
+        io_exchange_with_code(0x9000, 0);
+        // Display back the original UX
+        ui_idle();
+        break;
+    case STREAM_FINISHED:
+        io_seproxyhal_touch_tx_ok(NULL);
+        break;
+    default:
+        io_exchange_with_code(0x6A80, 0);
+        // Display back the original UX
+        ui_idle();
+        break;
     }
 }
 
@@ -1186,33 +1291,36 @@ void handleSign(uint8_t p1, uint8_t p2, uint8_t *workBuffer,
     switch (txResult)
     {
     case STREAM_CONFIRM_PROCESSING:
+        snprintf((char *)actionCounter, sizeof(actionCounter), "%d actions", txProcessingCtx.currentActionNumer);
 #if defined(TARGET_NANOS)
         ux_step = 0;
         ux_step_count = 2;
-        snprintf((char *)actionCounter, sizeof(actionCounter), "%d actions", txProcessingCtx.currentActionNumer);
         UX_DISPLAY(ui_multiple_action_tx_approval_nanos, ui_multiple_action_tx_approval_prepro);
 #elif defined(TARGET_NANOX)
-// TODO: add nano x support
+        ux_flow_init(0, ux_multiple_action_sign_flow, NULL);
 #endif
 
         *flags |= IO_ASYNCH_REPLY;
 
         break;
     case STREAM_ACTION_READY:
-        ux_step_count = txContent.argumentCount;
-#if defined(TARGET_NANOS)
         ux_step = 0;
-        ux_step_count += 3;
+        ux_step_count = txContent.argumentCount;
+
         if (txProcessingCtx.currentActionNumer > 1) {
             snprintf((char *)confirmLabel, sizeof(confirmLabel), "Action #%d", txProcessingCtx.currentActionIndex);
         } else {
-            strcpy((char *)confirmLabel, "Transaction");
+            strcpy((char *)confirmLabel, "Transaction");         
         }
+
+#if defined(TARGET_NANOS)
+        ux_step_count += 3;
         UX_DISPLAY(ui_single_action_tx_approval_nanos, ui_single_action_tx_approval_prepro);
 #elif defined(TARGET_NANOX)
-// TODO: add nano x support
-        ux_step = -1;
-        ux_flow_init(0, ux_sign_flow, NULL);
+        strcpy((char *)confirm_text1, txProcessingCtx.currentActionIndex == txProcessingCtx.currentActionNumer ? "Sign" : "Accept");
+        strcpy((char *)confirm_text2, txProcessingCtx.currentActionIndex == txProcessingCtx.currentActionNumer ? "transaction" : "and review next");
+        
+        ux_flow_init(0, ux_single_action_sign_flow, NULL);
 #endif
 
         *flags |= IO_ASYNCH_REPLY;

@@ -195,7 +195,7 @@ uint32_t compressed_public_key_to_wif(uint8_t *publicKey, uint32_t keyLength, ch
     uint8_t check[20];
     cx_ripemd160_t riprip;
     cx_ripemd160_init(&riprip);
-    cx_hash(&riprip.header, CX_LAST, temp, 33, check);
+    cx_hash(&riprip.header, CX_LAST, temp, 33, check, sizeof(check));
     os_memmove(temp + 33, check, 4);
     
     os_memset(out, 0, outLength);

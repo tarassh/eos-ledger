@@ -177,7 +177,7 @@ static void processEosioUnlinkAuth(txProcessingContext_t *context) {
 
 static void processUnknownAction(txProcessingContext_t *context) {
     cx_hash(&context->dataSha256->header, CX_LAST, context->dataChecksum, 0,
-            context->dataChecksum);
+            context->dataChecksum, sizeof(context->dataChecksum));
     context->content->argumentCount = 3;  
 }
 
@@ -365,11 +365,11 @@ static bool isKnownAction(txProcessingContext_t *context) {
  * dependencies on specific hash implementation.
 */
 static void hashTxData(txProcessingContext_t *context, uint8_t *buffer, uint32_t length) {
-    cx_hash(&context->sha256->header, 0, buffer, length, NULL);
+    cx_hash(&context->sha256->header, 0, buffer, length, NULL, 0);
 }
 
 static void hashActionData(txProcessingContext_t *context, uint8_t *buffer, uint32_t length) {
-    cx_hash(&context->dataSha256->header, 0, buffer, length, NULL);
+    cx_hash(&context->dataSha256->header, 0, buffer, length, NULL, 0);
 }
 
 /**

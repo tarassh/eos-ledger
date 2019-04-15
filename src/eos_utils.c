@@ -278,21 +278,21 @@ void rng_rfc6979(unsigned char *rnd,
             //d.  Set: K = HMAC_K(V || 0x00 || int2octets(x) || bits2octets(h1))
             V[h_len] = 0;
             cx_hmac_sha256_init(&hmac, K, 32);
-            cx_hmac(&hmac, 0, V, h_len + 1, K);
-            cx_hmac(&hmac, 0, x, x_len, K);
-            cx_hmac(&hmac, CX_LAST, h1, h_len, K);
+            cx_hmac(&hmac, 0, V, h_len + 1, K, 32);
+            cx_hmac(&hmac, 0, x, x_len, K, 32);
+            cx_hmac(&hmac, CX_LAST, h1, h_len, K, 32);
             //e.  Set: V = HMAC_K(V)
             cx_hmac_sha256_init(&hmac, K, 32);
-            cx_hmac((cx_hmac_t *)&hmac, CX_LAST, V, h_len, V);
+            cx_hmac((cx_hmac_t *)&hmac, CX_LAST, V, h_len, V, 32);
             //f.  Set:  K = HMAC_K(V || 0x01 || int2octets(x) || bits2octets(h1))
             V[h_len] = 1;
             cx_hmac_sha256_init(&hmac, K, 32);
-            cx_hmac(&hmac, 0, V, h_len + 1, K);
-            cx_hmac(&hmac, 0, x, x_len, K);
-            cx_hmac(&hmac, CX_LAST, h1, h_len, K);
+            cx_hmac(&hmac, 0, V, h_len + 1, K, 32);
+            cx_hmac(&hmac, 0, x, x_len, K, 32);
+            cx_hmac(&hmac, CX_LAST, h1, h_len, K, 32);
             //g. Set: V = HMAC_K(V) --
             cx_hmac_sha256_init(&hmac, K, 32);
-            cx_hmac(&hmac, CX_LAST, V, h_len, V);
+            cx_hmac(&hmac, CX_LAST, V, h_len, V, 32);
             // initial setup only once
             x = NULL;
         }
@@ -301,10 +301,10 @@ void rng_rfc6979(unsigned char *rnd,
             // h.3  K = HMAC_K(V || 0x00)
             V[h_len] = 0;
             cx_hmac_sha256_init(&hmac, K, 32);
-            cx_hmac(&hmac, CX_LAST, V, h_len + 1, K);
+            cx_hmac(&hmac, CX_LAST, V, h_len + 1, K, 32);
             // h.3 V = HMAC_K(V)
             cx_hmac_sha256_init(&hmac, K, 32);
-            cx_hmac(&hmac, CX_LAST, V, h_len, V);
+            cx_hmac(&hmac, CX_LAST, V, h_len, V, 32);
         }
 
         //generate candidate
@@ -324,7 +324,7 @@ void rng_rfc6979(unsigned char *rnd,
                 h_len = x_len;
             }
             cx_hmac_sha256_init(&hmac, K, 32);
-            cx_hmac(&hmac, CX_LAST, V, h_len, V);
+            cx_hmac(&hmac, CX_LAST, V, h_len, V, 32);
             os_memmove(rnd + offset, V, h_len);
             x_len -= h_len;
         }

@@ -1193,7 +1193,8 @@ void handleGetAppConfiguration(uint8_t p1, uint8_t p2, uint8_t *workBuffer,
 uint32_t sign_hash_and_set_result(void) 
 {
     // store hash
-    cx_hash(&sha256.header, CX_LAST, tmpCtx.transactionContext.hash, 0, tmpCtx.transactionContext.hash);
+    cx_hash(&sha256.header, CX_LAST, tmpCtx.transactionContext.hash, 0, 
+        tmpCtx.transactionContext.hash, sizeof(tmpCtx.transactionContext.hash));
 
     uint8_t privateKeyData[64];
     cx_ecfp_private_key_t privateKey;
@@ -1222,8 +1223,9 @@ uint32_t sign_hash_and_set_result(void)
         }
         uint32_t infos;
         tx = cx_ecdsa_sign(&privateKey, CX_NO_CANONICAL | CX_RND_PROVIDED | CX_LAST, CX_SHA256,
-                           tmpCtx.transactionContext.hash,
-                           32, G_io_apdu_buffer + 100, &infos);
+                           tmpCtx.transactionContext.hash, 32, 
+                           G_io_apdu_buffer + 100, 100,
+                           &infos);
         if ((infos & CX_ECCINFO_PARITY_ODD) != 0)
         {
             G_io_apdu_buffer[100] |= 0x01;

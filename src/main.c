@@ -39,9 +39,12 @@ void ui_idle(void);
 
 uint32_t get_public_key_and_set_result(void);
 uint32_t sign_hash_and_set_result(void);
+
+#if defined(TARGET_NANOS)
 unsigned int ui_address_nanos_button(unsigned int button_mask, unsigned int button_mask_counter);
 unsigned int ui_single_action_tx_approval_nanos_button(unsigned int button_mask, unsigned int button_mask_counter);
 unsigned int ui_multiple_action_tx_approval_nanos_button(unsigned int button_mask, unsigned int button_mask_counter);
+#endif // #if defined(TARGET_NANOS)
 
 #define MAX_BIP32_PATH 10
 
@@ -94,23 +97,31 @@ union {
 txProcessingContext_t txProcessingCtx;
 txProcessingContent_t txContent;
 
-volatile uint8_t dataAllowed;
 volatile char actionCounter[32];
 volatile char confirmLabel[32];
 
+#ifdef TARGET_NANOX
+
+#include "ux.h"
+ux_state_t G_ux;
+bolos_ux_params_t G_ux_params;
+
+#else // TARGET_NANOX
+
 ux_state_t ux;
+
+#endif // TARGET_NANOX
 // display stepped screens
 unsigned int ux_step;
 unsigned int ux_step_count;
 
-typedef struct internalStorage_t
-{
+typedef struct internalStorage_t {
     uint8_t dataAllowed;
     uint8_t initialized;
 } internalStorage_t;
 
-WIDE internalStorage_t N_storage_real;
-#define N_storage (*(WIDE internalStorage_t *)PIC(&N_storage_real))
+const internalStorage_t N_storage_real;
+#define N_storage (*(volatile internalStorage_t *)PIC(&N_storage_real))
 
 const bagl_element_t *ui_menu_item_out_over(const bagl_element_t *e)
 {
@@ -118,6 +129,8 @@ const bagl_element_t *ui_menu_item_out_over(const bagl_element_t *e)
     e = (const bagl_element_t *)(((unsigned int)e) + sizeof(bagl_element_t));
     return e;
 }
+
+#if defined(TARGET_NANOS)
 
 const ux_menu_entry_t menu_main[];
 const ux_menu_entry_t menu_settings[];
@@ -164,6 +177,9 @@ const ux_menu_entry_t menu_main[] = {
     {NULL, os_sched_exit, 0, &C_icon_dashboard, "Quit app", NULL, 50, 29},
     UX_MENU_END};
 
+#endif // #if defined(TARGET_NANOS)
+
+#if defined(TARGET_NANOS)
 const bagl_element_t ui_address_nanos[] = {
     // type                               userid    x    y   w    h  str rad
     // fill      fg        bg      fid iid  txt   touchparams...       ]
@@ -260,7 +276,10 @@ unsigned int ui_address_prepro(const bagl_element_t *element)
     }
     return 1;
 }
+#endif // #if defined(TARGET_NANOS)
 
+
+#if defined(TARGET_NANOS)
 const bagl_element_t ui_single_action_tx_approval_nanos[] = {
     // type                               userid    x    y   w    h  str rad
     // fill      fg        bg      fid iid  txt   touchparams...       ]
@@ -408,6 +427,9 @@ unsigned int ui_single_action_tx_approval_prepro(const bagl_element_t *element)
     return display;
 }
 
+#endif // #if defined(TARGET_NANOS)
+
+#if defined(TARGET_NANOS)
 const bagl_element_t ui_multiple_action_tx_approval_nanos[] = {
     // type                               userid    x    y   w    h  str rad
     // fill      fg        bg      fid iid  txt   touchparams...       ]
@@ -501,10 +523,385 @@ unsigned int ui_multiple_action_tx_approval_prepro(const bagl_element_t *element
     }
     return display;
 }
+#endif // #if defined(TARGET_NANOS)
+
+#if defined(TARGET_NANOX)
+
+void display_settings(void);
+void switch_settings_contract_data(void);
+
+UX_FLOW_DEF_NOCB(
+    ux_idle_flow_1_step,
+    bnn, //pnn,
+    {
+      "", //&C_icon_dashboard,
+      "Application",
+      "is ready",
+    });
+UX_FLOW_DEF_NOCB(
+    ux_idle_flow_2_step,
+    bn,
+    {
+      "Version",
+      APPVERSION,
+    });
+UX_FLOW_DEF_VALID(
+    ux_idle_flow_3_step,
+    pb,
+    display_settings(),
+    {
+      &C_icon_eye,
+      "Settings",
+    });
+UX_FLOW_DEF_VALID(
+    ux_idle_flow_4_step,
+    pb,
+    os_sched_exit(-1),
+    {
+      &C_icon_dashboard,
+      "Quit",
+    });
+
+UX_FLOW(
+    ux_idle_flow,
+    &ux_idle_flow_1_step,
+    &ux_idle_flow_2_step,
+    &ux_idle_flow_3_step,
+    &ux_idle_flow_4_step
+);
+
+UX_FLOW_DEF_VALID(
+    ux_settings_flow_1_step,
+    bnnn,
+    switch_settings_contract_data(),
+    {
+      "Contract data",
+      "Allow contract data",
+      "in transactions",
+      confirmLabel,
+    });
+
+UX_FLOW_DEF_VALID(
+    ux_settings_flow_2_step,
+    pb,
+    ui_idle(),
+    {
+      &C_icon_back,
+      "Back",
+    });
+
+UX_FLOW(
+    ux_settings_flow, 
+    &ux_settings_flow_1_step,
+    &ux_settings_flow_2_step
+);
+
+void display_settings() {
+  strcpy(confirmLabel, (N_storage.dataAllowed ? "Allowed" : "NOT Allowed"));
+  ux_flow_init(0, ux_settings_flow, NULL);
+}
+
+void switch_settings_contract_data() {
+  uint8_t value = (N_storage.dataAllowed ? 0 : 1);
+  nvm_write(&N_storage.dataAllowed, (void*)&value, sizeof(uint8_t));
+  display_settings();
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+UX_FLOW_DEF_NOCB(
+    ux_display_public_flow_1_step,
+    pnn,
+    {
+      &C_icon_eye,
+      "Verify",
+      "Public Key",
+    });
+UX_FLOW_DEF_NOCB(
+    ux_display_public_flow_2_step,
+    bnnn_paging,
+    {
+      .title = "Public Key",
+      .text = tmpCtx.publicKeyContext.address,
+    });
+UX_FLOW_DEF_VALID(
+    ux_display_public_flow_3_step,
+    pb,
+    io_seproxyhal_touch_address_ok(NULL),
+    {
+      &C_icon_validate_14,
+      "Approve",
+    });
+UX_FLOW_DEF_VALID(
+    ux_display_public_flow_4_step,
+    pb,
+    io_seproxyhal_touch_address_cancel(NULL),
+    {
+      &C_icon_crossmark,
+      "Reject",
+    });
+
+UX_FLOW(
+    ux_display_public_flow,
+    &ux_display_public_flow_1_step,
+    &ux_display_public_flow_2_step,
+    &ux_display_public_flow_3_step,
+    &ux_display_public_flow_4_step
+);
+
+///////////////////////////////////////////////////////////////////////////////
+
+#define STATE_LEFT_BORDER 0
+#define STATE_VARIABLE 1
+#define STATE_RIGHT_BORDER 2
+
+volatile char confirm_text1[16];
+volatile char confirm_text2[16];
+
+void display_next_state(uint8_t state);
+void ux_single_action_sign_flow_ok_pressed();
+
+UX_FLOW_DEF_NOCB(
+    ux_single_action_sign_flow_1_step,
+    pnn,
+    {
+      &C_icon_certificate,
+      "Review",
+      confirmLabel,
+    });
+UX_FLOW_DEF_NOCB(
+    ux_single_action_sign_flow_2_step,
+    bn,
+    {
+      "Contract",
+      txContent.contract,
+    });
+UX_FLOW_DEF_NOCB(
+    ux_single_action_sign_flow_3_step,
+    bn,
+    {
+      "Action",
+      txContent.action,
+    });
+UX_STEP_INIT(
+    ux_init_left_border,
+    NULL,
+    NULL,
+    {
+        display_next_state(STATE_LEFT_BORDER);
+    });
+
+UX_STEP_NOCB_INIT(
+    ux_single_action_sign_flow_variable_step,
+    bnnn_paging,
+    {
+        display_next_state(STATE_VARIABLE);
+    },
+    {
+      .title = txContent.arg.label,
+      .text = txContent.arg.data,
+    });
+
+UX_STEP_INIT(
+    ux_init_right_border,
+    NULL,
+    NULL,
+    {
+        display_next_state(STATE_RIGHT_BORDER);
+    });
+
+UX_FLOW_DEF_VALID(
+    ux_single_action_sign_flow_7_step,
+    pbb,
+    ux_single_action_sign_flow_ok_pressed(),
+    {
+      &C_icon_validate_14,
+      confirm_text1,
+      confirm_text2,
+    });
+UX_FLOW_DEF_VALID(
+    ux_single_action_sign_flow_8_step,
+    pbb,
+    io_seproxyhal_touch_tx_cancel(NULL),
+    {
+      &C_icon_crossmark,
+      "Cancel",
+      "signature",
+    });
+
+UX_FLOW(
+    ux_single_action_sign_flow, 
+    &ux_single_action_sign_flow_1_step,
+    &ux_single_action_sign_flow_2_step,
+    &ux_single_action_sign_flow_3_step,
+    &ux_init_left_border,
+    &ux_single_action_sign_flow_variable_step,
+    &ux_init_right_border,
+    &ux_single_action_sign_flow_7_step,
+    &ux_single_action_sign_flow_8_step
+);
+
+void display_next_state(uint8_t state) 
+{
+    if (state == STATE_LEFT_BORDER)
+    {
+        if (ux_step == 0)
+        {
+            ux_step = 1;
+            ux_flow_next();
+        }
+        else if (ux_step == 1) 
+        {
+            --ux_step;
+            ux_flow_prev();
+        }
+        else if (ux_step > 1)
+        {
+            --ux_step;
+            ux_flow_next();
+        }
+    }
+    else if (state == STATE_VARIABLE)
+    {
+        printArgument(ux_step-1, &txProcessingCtx);
+    }
+    else if (state == STATE_RIGHT_BORDER)
+    {
+        if (ux_step < ux_step_count)
+        {
+            ++ux_step;
+            ux_flow_prev();
+        }
+        else if (ux_step == ux_step_count)
+        {
+            ++ux_step;
+            ux_flow_next();
+        }
+        else if (ux_step > ux_step_count)
+        {
+            ux_step = ux_step_count;
+            ux_flow_prev();
+        }
+    }
+}
+
+void ux_single_action_sign_flow_ok_pressed() 
+{
+    parserStatus_e txResult = parseTx(&txProcessingCtx, NULL, 0);
+    switch (txResult) {
+    case STREAM_ACTION_READY:
+        ux_step = 0;
+        ux_step_count = txContent.argumentCount;
+        if (txProcessingCtx.currentActionNumer > 1) {
+            snprintf((char *)confirmLabel, sizeof(confirmLabel), "Action #%d", txProcessingCtx.currentActionIndex);
+        }
+        strcpy((char *)confirm_text1, txProcessingCtx.currentActionIndex == txProcessingCtx.currentActionNumer ? "Sign" : "Accept");
+        strcpy((char *)confirm_text2, txProcessingCtx.currentActionIndex == txProcessingCtx.currentActionNumer ? "transaction" : "and review next");
+
+        ux_flow_init(0, ux_single_action_sign_flow, NULL);
+        break;
+    case STREAM_PROCESSING:
+        io_exchange_with_code(0x9000, 0);
+        // Display back the original UX
+        ui_idle();
+        break;
+    case STREAM_FINISHED:
+        io_seproxyhal_touch_tx_ok(NULL);
+        break;
+    default:
+        io_exchange_with_code(0x6A80, 0);
+        // Display back the original UX
+        ui_idle();
+        break;
+    }
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+
+void ux_multiple_action_sign_flow_ok_pressed();
+
+UX_FLOW_DEF_NOCB(
+    ux_multiple_action_sign_flow_1_step,
+    pnn,
+    {
+      &C_icon_certificate,
+      "Review",
+      "Transaction",
+    });
+UX_FLOW_DEF_NOCB(
+    ux_multiple_action_sign_flow_2_step,
+    bn, //pnn,
+    {
+      "With",
+      actionCounter,
+    });
+UX_FLOW_DEF_VALID(
+    ux_multiple_action_sign_flow_3_step,
+    pbb,
+    ux_multiple_action_sign_flow_ok_pressed(),
+    {
+      &C_icon_validate_14,
+      "Continue",
+      "review"
+    });
+UX_FLOW_DEF_VALID(
+    ux_multiple_action_sign_flow_4_step,
+    pbb,
+    io_seproxyhal_touch_tx_cancel(NULL),
+    {
+      &C_icon_crossmark,
+      "Cancel",
+      "review",
+    });
+
+UX_FLOW(
+    ux_multiple_action_sign_flow, 
+    &ux_multiple_action_sign_flow_1_step,
+    &ux_multiple_action_sign_flow_2_step,
+    &ux_multiple_action_sign_flow_3_step,
+    &ux_multiple_action_sign_flow_4_step
+);
+
+void ux_multiple_action_sign_flow_ok_pressed()
+{
+    parserStatus_e txResult = parseTx(&txProcessingCtx, NULL, 0);
+    switch (txResult) {
+    case STREAM_ACTION_READY:
+        ux_step = 0;
+        ux_step_count = txContent.argumentCount;
+        // TODO: proper redisplya
+        // UX_REDISPLAY();
+        break;
+    case STREAM_PROCESSING:
+        io_exchange_with_code(0x9000, 0);
+        // Display back the original UX
+        ui_idle();
+        break;
+    case STREAM_FINISHED:
+        io_seproxyhal_touch_tx_ok(NULL);
+        break;
+    default:
+        io_exchange_with_code(0x6A80, 0);
+        // Display back the original UX
+        ui_idle();
+        break;
+    }
+}
+
+#endif // #if defined(TARGET_NANOX)
 
 void ui_idle(void)
 {
+#if defined(TARGET_NANOS)
     UX_MENU_DISPLAY(0, menu_main, NULL);
+#elif defined(TARGET_NANOX)
+    // reserve a display stack slot if none yet
+    if(G_ux.stack_count == 0) {
+        ux_stack_push();
+    }
+    ux_flow_init(0, ux_idle_flow, NULL);
+#endif
 }
 
 unsigned int io_seproxyhal_touch_exit(const bagl_element_t *e)
@@ -531,6 +928,7 @@ unsigned int io_seproxyhal_touch_address_cancel(const bagl_element_t *e)
     return 0; // do not redraw the widget
 }
 
+#if defined(TARGET_NANOS)
 unsigned int ui_address_nanos_button(unsigned int button_mask,
                                      unsigned int button_mask_counter)
 {
@@ -548,6 +946,7 @@ unsigned int ui_address_nanos_button(unsigned int button_mask,
     }
     return 0;
 }
+#endif // ui_address_nanos_button
 
 unsigned int io_seproxyhal_touch_tx_ok(const bagl_element_t *e)
 {
@@ -566,6 +965,8 @@ unsigned int io_seproxyhal_touch_tx_cancel(const bagl_element_t *e)
     ui_idle();
     return 0; // do not redraw the widget
 }
+
+#if defined(TARGET_NANOS)
 
 unsigned int ui_single_action_tx_approval_nanos_button(unsigned int button_mask,
                                       unsigned int button_mask_counter)
@@ -646,6 +1047,8 @@ unsigned int ui_multiple_action_tx_approval_nanos_button(unsigned int button_mas
 
     return 0;
 }
+
+#endif // defined(TARGET_NANOS)
 
 void io_exchange_with_code(uint16_t code, uint32_t tx) {
 	G_io_apdu_buffer[tx++] = code >> 8;
@@ -756,10 +1159,14 @@ void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t *dataBuffer,
     }
     else
     {
+#if defined(TARGET_NANOS)
         // prepare for a UI based reply
         ux_step = 0;
         ux_step_count = 2;
         UX_DISPLAY(ui_address_nanos, ui_address_prepro);
+#elif defined(TARGET_NANOX)
+        ux_flow_init(0, ux_display_public_flow, NULL);
+#endif
 
         *flags |= IO_ASYNCH_REPLY;
     }
@@ -884,23 +1291,37 @@ void handleSign(uint8_t p1, uint8_t p2, uint8_t *workBuffer,
     switch (txResult)
     {
     case STREAM_CONFIRM_PROCESSING:
+        snprintf((char *)actionCounter, sizeof(actionCounter), "%d actions", txProcessingCtx.currentActionNumer);
+#if defined(TARGET_NANOS)
         ux_step = 0;
         ux_step_count = 2;
-        snprintf((char *)actionCounter, sizeof(actionCounter), "%d actions", txProcessingCtx.currentActionNumer);
         UX_DISPLAY(ui_multiple_action_tx_approval_nanos, ui_multiple_action_tx_approval_prepro);
+#elif defined(TARGET_NANOX)
+        ux_flow_init(0, ux_multiple_action_sign_flow, NULL);
+#endif
 
         *flags |= IO_ASYNCH_REPLY;
 
         break;
     case STREAM_ACTION_READY:
         ux_step = 0;
-        ux_step_count = 3 + txContent.argumentCount;
+        ux_step_count = txContent.argumentCount;
+
         if (txProcessingCtx.currentActionNumer > 1) {
             snprintf((char *)confirmLabel, sizeof(confirmLabel), "Action #%d", txProcessingCtx.currentActionIndex);
         } else {
-            strcpy((char *)confirmLabel, "Transaction");
+            strcpy((char *)confirmLabel, "Transaction");         
         }
+
+#if defined(TARGET_NANOS)
+        ux_step_count += 3;
         UX_DISPLAY(ui_single_action_tx_approval_nanos, ui_single_action_tx_approval_prepro);
+#elif defined(TARGET_NANOX)
+        strcpy((char *)confirm_text1, txProcessingCtx.currentActionIndex == txProcessingCtx.currentActionNumer ? "Sign" : "Accept");
+        strcpy((char *)confirm_text2, txProcessingCtx.currentActionIndex == txProcessingCtx.currentActionNumer ? "transaction" : "and review next");
+        
+        ux_flow_init(0, ux_single_action_sign_flow, NULL);
+#endif
 
         *flags |= IO_ASYNCH_REPLY;
 
@@ -1105,6 +1526,7 @@ unsigned char io_event(unsigned char channel)
 
     case SEPROXYHAL_TAG_TICKER_EVENT:
         UX_TICKER_EVENT(G_io_seproxyhal_spi_buffer, {
+#if defined(TARGET_NANOS)
             if (UX_ALLOWED)
             {
                 if (ux_step_count)
@@ -1115,6 +1537,7 @@ unsigned char io_event(unsigned char channel)
                     UX_REDISPLAY();
                 }
             }
+#endif // TARGET_NANOS
         });
         break;
     }
@@ -1161,6 +1584,10 @@ __attribute__((section(".boot"))) int main(void)
             TRY
             {
                 io_seproxyhal_init();
+#ifdef TARGET_NANOX
+                // grab the current plane mode setting
+                G_io_app.plane_mode = os_setting_get(OS_SETTING_PLANEMODE, NULL, 0);
+#endif // TARGET_NANOX
 
                 if (N_storage.initialized != 0x01)
                 {
@@ -1175,6 +1602,11 @@ __attribute__((section(".boot"))) int main(void)
                 USB_power(1);
 
                 ui_idle();
+
+#ifdef HAVE_BLE
+                BLE_power(0, NULL);
+                BLE_power(1, "Nano X");
+#endif // HAVE_BLE
 
                 sample_main();
             }

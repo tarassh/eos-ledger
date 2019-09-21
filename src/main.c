@@ -550,7 +550,7 @@ UX_FLOW_DEF_VALID(
     pb,
     display_settings(),
     {
-      &C_icon_eye,
+      &C_icon_coggle,
       "Settings",
     });
 UX_FLOW_DEF_VALID(

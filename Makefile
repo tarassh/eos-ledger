@@ -22,8 +22,8 @@ include $(BOLOS_SDK)/Makefile.defines
 
 
 APPVERSION_M=1
-APPVERSION_N=2
-APPVERSION_P=2
+APPVERSION_N=3
+APPVERSION_P=0
 APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
 
 APPNAME = Eos
@@ -55,6 +55,9 @@ DEFINES   += HAVE_U2F HAVE_IO_U2F
 DEFINES   += U2F_PROXY_MAGIC=\"e0s\"
 DEFINES   += USB_SEGMENT_SIZE=64
 DEFINES   += BLE_SEGMENT_SIZE=32 #max MTU, min 20
+
+WEBUSB_URL     = www.ledgerwallet.com
+DEFINES       += HAVE_WEBUSB WEBUSB_URL_SIZE_B=$(shell echo -n $(WEBUSB_URL) | wc -c) WEBUSB_URL=$(shell echo -n $(WEBUSB_URL) | sed -e "s/./\\\'\0\\\',/g")
 
 DEFINES   += UNUSED\(x\)=\(void\)x
 DEFINES   += APPVERSION=\"$(APPVERSION)\"

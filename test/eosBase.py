@@ -261,13 +261,14 @@ class Transaction:
         parameters += Transaction.name_to_number(data['to'])
         parameters += Transaction.asset_to_number(data['stake_net_quantity'])
         parameters += Transaction.asset_to_number(data['stake_cpu_quantity'])
-        parameters += chr(0x01) if data['transfer'] else chr(0x00)
+        parameters += bytes([0x01]) if data['transfer'] else bytes([0x00])
         return parameters
 
     @staticmethod
     def parse_unknown(data):
         data = data * 1000
-        parameters = struct.pack(str(len(data)) + 's', str(data))
+        length = '{}s'.format(len(data))
+        parameters = struct.pack(length, data.encode())
         return parameters
 
     @staticmethod

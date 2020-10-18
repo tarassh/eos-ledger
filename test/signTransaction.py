@@ -77,7 +77,7 @@ with open(args.file) as f:
             first = False
         else:
             totalSize = len(chunk)
-            apdu = "D4048000".decode('hex') + bytes([totalSize]) + chunk
+            apdu = bytearray.fromhex("D4048000") + bytes([totalSize]) + chunk
 
         offset += len(chunk)
         result = dongle.exchange(bytes(apdu))

@@ -71,8 +71,5 @@ buff = public_key_compressed + check
 print("Calculated from public key: Address EOS" + b58encode(buff).decode())
 print("      Received from ledger: Address", address.decode())
 
-apdu = bytearray.fromhex("D4020101") + chr(len(donglePath) + 1).encode() + \
-    chr(len(donglePath) // 4).encode() + donglePath
-
 apdu = bytearray.fromhex("D4020101") + bytes([len(donglePath) + 1, len(donglePath) // 4]) + donglePath
 result = dongle.exchange(bytes(apdu))

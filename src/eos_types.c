@@ -18,6 +18,7 @@
 #include "eos_types.h"
 #include "eos_utils.h"
 #include "os.h"
+#include "cx.h"
 #include <stdbool.h>
 #include "string.h"
 

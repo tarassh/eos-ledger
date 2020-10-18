@@ -17,16 +17,19 @@
 *  limitations under the License.
 ********************************************************************************/
 """
+from __future__ import print_function
+
 from ledgerblue.comm import getDongle
 import struct
 from base58 import b58encode
 import hashlib
+import binascii
 
 
 def parse_bip32_path(path):
     if len(path) == 0:
-        return ""
-    result = ""
+        return b""
+    result = b""
     elements = path.split('/')
     for pathElement in elements:
         element = pathElement.split('\'')
@@ -41,10 +44,11 @@ dongle = getDongle(False)
 path = "44'/194'/0'/0/"
 for i in range(0, 20):
     derPath = path + str(i)
-    print "------------- {} -------------".format(derPath)
+    print("------------- {} -------------".format(derPath))
 
     donglePath = parse_bip32_path(derPath)
-    apdu = "D4020001".decode('hex') + chr(len(donglePath) + 1) + chr(len(donglePath) / 4) + donglePath
+    apdu = bytearray.fromhex("D4020001") + chr(len(donglePath) + 1).encode() + \
+        chr(len(donglePath) // 4).encode() + donglePath
 
     result = dongle.exchange(bytes(apdu))
     offset = 1 + result[0]
@@ -54,15 +58,15 @@ for i in range(0, 20):
     head = 0x03 if (public_key[64] & 0x01) == 1 else 0x02
     public_key_compressed = bytearray([head]) + public_key[1:33]
 
-    print "           Public key: " + str(public_key).encode('hex')
-    print "Public key compressed: " + str(public_key_compressed).encode('hex')
+    print("           Public key:", binascii.hexlify(public_key))
+    print("Public key compressed:", binascii.hexlify(public_key_compressed))
 
     ripemd = hashlib.new('ripemd160')
     ripemd.update(public_key_compressed)
     check = ripemd.digest()[:4]
 
     buff = public_key_compressed + check
-    wif_public_key = "EOS" + b58encode(str(buff))
-    print "Calculated from public key: Address " + wif_public_key
-    print "      Received from ledger: Address " + str(address)
-    assert wif_public_key == str(address)
+    wif_public_key = "EOS" + b58encode(buff).decode()
+    print("Calculated from public key: Address " + wif_public_key)
+    print("      Received from ledger: Address " + address.decode())
+    assert wif_public_key == address.decode()

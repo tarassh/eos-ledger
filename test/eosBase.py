@@ -17,6 +17,7 @@
 *  limitations under the License.
 ********************************************************************************/
 """
+from __future__ import print_function
 
 from asn1 import Encoder, Numbers
 from datetime import datetime
@@ -115,19 +116,20 @@ class Transaction:
         memo = data['memo']
         parameters += Transaction.pack_fc_uint(len(memo))
         if len(memo) > 0:
-            parameters += struct.pack(str(len(memo)) + 's', str(data['memo']))
+            length = '{}s'.format(len(memo))
+            parameters += struct.pack(length, data['memo'].encode())
 
         return parameters
 
     @staticmethod
     def pack_fc_uint(value):
-        out = ''
+        out = b''
         val = value
         while True:
             b = val & 0x7f
             val >>= 7
             b |= ((val > 0) << 7)
-            out += chr(b)
+            out += chr(b).encode()
 
             if val == 0:
                 break
@@ -339,7 +341,7 @@ class Transaction:
             sha = hashlib.sha256()
             sha.update(action.data_size)
             sha.update(action.data)
-            print 'Argument checksum ' + sha.hexdigest()
+            print('Argument checksum ' + sha.hexdigest())
 
         return tx
 
@@ -370,7 +372,7 @@ class Transaction:
         sha.update(self.tx_ext)
         sha.update(self.cfd)
 
-        print 'Signing digest ' + sha.hexdigest()
+        print('Signing digest ' + sha.hexdigest())
 
         encoder.start()
         encoder.write(self.chain_id, Numbers.OctetString)

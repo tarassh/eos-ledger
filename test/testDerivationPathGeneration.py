@@ -47,8 +47,7 @@ for i in range(0, 20):
     print("------------- {} -------------".format(derPath))
 
     donglePath = parse_bip32_path(derPath)
-    apdu = bytearray.fromhex("D4020001") + chr(len(donglePath) + 1).encode() + \
-        chr(len(donglePath) // 4).encode() + donglePath
+    apdu = bytearray.fromhex("D4020001") + bytes([len(donglePath) + 1, len(donglePath) // 4]) + donglePath
 
     result = dongle.exchange(bytes(apdu))
     offset = 1 + result[0]

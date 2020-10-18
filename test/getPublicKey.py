@@ -49,8 +49,7 @@ if args.path is None:
     args.path = "44'/194'/0'/0/0"
 
 donglePath = parse_bip32_path(args.path)
-apdu = bytearray.fromhex("D4020001") + chr(len(donglePath) + 1).encode() + \
-    chr(len(donglePath) // 4).encode() + donglePath
+apdu = bytearray.fromhex("D4020001") + bytes([len(donglePath) + 1, len(donglePath) // 4]) + donglePath
 
 dongle = getDongle(True)
 result = dongle.exchange(bytes(apdu))
@@ -74,4 +73,6 @@ print("      Received from ledger: Address", address.decode())
 
 apdu = bytearray.fromhex("D4020101") + chr(len(donglePath) + 1).encode() + \
     chr(len(donglePath) // 4).encode() + donglePath
+
+apdu = bytearray.fromhex("D4020101") + bytes([len(donglePath) + 1, len(donglePath) // 4]) + donglePath
 result = dongle.exchange(bytes(apdu))

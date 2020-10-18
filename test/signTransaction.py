@@ -73,15 +73,11 @@ with open(args.file) as f:
 
         if first:
             totalSize = len(donglePath) + 1 + len(chunk)
-            print("TOTAL", totalSize)
-            print("PATH", pathSize)
-            print("DONGLE", donglePath)
-            print("CHunk", chunk)
-            apdu = bytearray.fromhex("D4040000") + chr(totalSize) + chr(pathSize) + donglePath + chunk
+            apdu = bytearray.fromhex("D4040000") + bytes([totalSize, pathSize]) + donglePath + chunk
             first = False
         else:
             totalSize = len(chunk)
-            apdu = "D4048000".decode('hex') + chr(totalSize) + chunk
+            apdu = "D4048000".decode('hex') + bytes([totalSize]) + chunk
 
         offset += len(chunk)
         result = dongle.exchange(bytes(apdu))

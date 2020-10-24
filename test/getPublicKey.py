@@ -17,17 +17,20 @@
 *  limitations under the License.
 ********************************************************************************/
 """
+from __future__ import print_function
+
 from ledgerblue.comm import getDongle
 import argparse
 import struct
 from base58 import b58encode
 import hashlib
+import binascii
 
 
 def parse_bip32_path(path):
     if len(path) == 0:
-        return ""
-    result = ""
+        return b""
+    result = b""
     elements = path.split('/')
     for pathElement in elements:
         element = pathElement.split('\'')
@@ -46,7 +49,7 @@ if args.path is None:
     args.path = "44'/194'/0'/0/0"
 
 donglePath = parse_bip32_path(args.path)
-apdu = "D4020001".decode('hex') + chr(len(donglePath) + 1) + chr(len(donglePath) / 4) + donglePath
+apdu = bytearray.fromhex("D4020001") + bytes([len(donglePath) + 1, len(donglePath) // 4]) + donglePath
 
 dongle = getDongle(True)
 result = dongle.exchange(bytes(apdu))
@@ -57,16 +60,16 @@ public_key = result[1: 1 + result[0]]
 head = 0x03 if (public_key[64] & 0x01) == 1 else 0x02
 public_key_compressed = bytearray([head]) + public_key[1:33]
 
-print "           Public key " + str(public_key).encode('hex')
-print "Public key compressed " + str(public_key_compressed).encode('hex')
+print("           Public key", binascii.hexlify(public_key))
+print("Public key compressed", binascii.hexlify(public_key_compressed))
 
 ripemd = hashlib.new('ripemd160')
 ripemd.update(public_key_compressed)
 check = ripemd.digest()[:4]
 
 buff = public_key_compressed + check
-print "Calculated from public key: Address EOS" + b58encode(str(buff))
-print "      Received from ledger: Address " + str(address)
+print("Calculated from public key: Address EOS" + b58encode(buff).decode())
+print("      Received from ledger: Address", address.decode())
 
-apdu = "D4020101".decode('hex') + chr(len(donglePath) + 1) + chr(len(donglePath) / 4) + donglePath
+apdu = bytearray.fromhex("D4020101") + bytes([len(donglePath) + 1, len(donglePath) // 4]) + donglePath
 result = dongle.exchange(bytes(apdu))

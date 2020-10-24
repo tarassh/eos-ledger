@@ -28,8 +28,8 @@ import argparse
 
 def parse_bip32_path(path):
     if len(path) == 0:
-        return ""
-    result = ""
+        return b""
+    result = b""
     elements = path.split('/')
     for pathElement in elements:
         element = pathElement.split('\'')
@@ -52,14 +52,14 @@ if args.file is None:
     args.file = 'transaction.json'
 
 donglePath = parse_bip32_path(args.path)
-pathSize = len(donglePath) / 4
+pathSize = len(donglePath) // 4
 
-with file(args.file) as f:
+with open(args.file) as f:
     obj = json.load(f)
     tx = Transaction.parse(obj)
     tx_raw = tx.encode()
     signData = tx_raw
-    print binascii.hexlify(tx_raw)
+    print("Raw Tx", binascii.hexlify(tx_raw))
 
     dongle = getDongle(True)
     offset = 0
@@ -73,12 +73,12 @@ with file(args.file) as f:
 
         if first:
             totalSize = len(donglePath) + 1 + len(chunk)
-            apdu = "D4040000".decode('hex') + chr(totalSize) + chr(pathSize) + donglePath + chunk
+            apdu = bytearray.fromhex("D4040000") + bytes([totalSize, pathSize]) + donglePath + chunk
             first = False
         else:
             totalSize = len(chunk)
-            apdu = "D4048000".decode('hex') + chr(totalSize) + chunk
+            apdu = bytearray.fromhex("D4048000") + bytes([totalSize]) + chunk
 
         offset += len(chunk)
         result = dongle.exchange(bytes(apdu))
-        print binascii.hexlify(result)
+        print(binascii.hexlify(result))

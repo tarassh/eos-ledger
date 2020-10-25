@@ -214,7 +214,7 @@ void switch_settings_contract_data() {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-UX_FLOW_DEF_NOCB(
+UX_STEP_NOCB(
     ux_display_public_flow_1_step,
     pnn,
     {
@@ -222,14 +222,14 @@ UX_FLOW_DEF_NOCB(
       "Verify",
       "Public Key",
     });
-UX_FLOW_DEF_NOCB(
+UX_STEP_NOCB(
     ux_display_public_flow_2_step,
     bnnn_paging,
     {
       .title = "Public Key",
       .text = tmpCtx.publicKeyContext.address,
     });
-UX_FLOW_DEF_VALID(
+UX_STEP_CB(
     ux_display_public_flow_3_step,
     pb,
     io_seproxyhal_touch_address_ok(NULL),
@@ -237,7 +237,7 @@ UX_FLOW_DEF_VALID(
       &C_icon_validate_14,
       "Approve",
     });
-UX_FLOW_DEF_VALID(
+UX_STEP_CB(
     ux_display_public_flow_4_step,
     pb,
     io_seproxyhal_touch_address_cancel(NULL),
@@ -266,7 +266,7 @@ volatile char confirm_text2[16];
 void display_next_state(uint8_t state);
 void ux_single_action_sign_flow_ok_pressed();
 
-UX_FLOW_DEF_NOCB(
+UX_STEP_NOCB(
     ux_single_action_sign_flow_1_step,
     pnn,
     {
@@ -274,14 +274,14 @@ UX_FLOW_DEF_NOCB(
       "Review",
       confirmLabel,
     });
-UX_FLOW_DEF_NOCB(
+UX_STEP_NOCB(
     ux_single_action_sign_flow_2_step,
     bn,
     {
       "Contract",
       txContent.contract,
     });
-UX_FLOW_DEF_NOCB(
+UX_STEP_NOCB(
     ux_single_action_sign_flow_3_step,
     bn,
     {
@@ -315,7 +315,7 @@ UX_STEP_INIT(
         display_next_state(STATE_RIGHT_BORDER);
     });
 
-UX_FLOW_DEF_VALID(
+UX_STEP_CB(
     ux_single_action_sign_flow_7_step,
     pbb,
     ux_single_action_sign_flow_ok_pressed(),
@@ -324,7 +324,7 @@ UX_FLOW_DEF_VALID(
       confirm_text1,
       confirm_text2,
     });
-UX_FLOW_DEF_VALID(
+UX_STEP_CB(
     ux_single_action_sign_flow_8_step,
     pbb,
     io_seproxyhal_touch_tx_cancel(NULL),

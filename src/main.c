@@ -28,7 +28,6 @@
 
 unsigned char G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
 
-unsigned int io_seproxyhal_touch_settings(const bagl_element_t *e);
 unsigned int io_seproxyhal_touch_exit(const bagl_element_t *e);
 unsigned int io_seproxyhal_touch_tx_ok(const bagl_element_t *e);
 unsigned int io_seproxyhal_touch_tx_cancel(const bagl_element_t *e);
@@ -109,13 +108,6 @@ typedef struct internalStorage_t {
 
 const internalStorage_t N_storage_real;
 #define N_storage (*(volatile internalStorage_t *)PIC(&N_storage_real))
-
-const bagl_element_t *ui_menu_item_out_over(const bagl_element_t *e)
-{
-    // the selection rectangle is after the none|touchable
-    e = (const bagl_element_t *)(((unsigned int)e) + sizeof(bagl_element_t));
-    return e;
-}
 
 void display_settings(void);
 void switch_settings_contract_data(void);

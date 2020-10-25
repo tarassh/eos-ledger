@@ -775,13 +775,7 @@ void handleSign(uint8_t p1, uint8_t p2, uint8_t *workBuffer,
     {
     case STREAM_CONFIRM_PROCESSING:
         snprintf((char *)actionCounter, sizeof(actionCounter), "%d actions", txProcessingCtx.currentActionNumer);
-// #if defined(TARGET_NANOS)
-        // ux_step = 0;
-        // ux_step_count = 2;
-        // UX_DISPLAY(ui_multiple_action_tx_approval_nanos, ui_multiple_action_tx_approval_prepro);
-// #elif defined(TARGET_NANOX)
         ux_flow_init(0, ux_multiple_action_sign_flow, NULL);
-// #endif
 
         *flags |= IO_ASYNCH_REPLY;
 

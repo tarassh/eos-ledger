@@ -791,7 +791,7 @@ void handleSign(uint8_t p1, uint8_t p2, uint8_t *workBuffer,
         }
 
         strcpy((char *)confirm_text1, txProcessingCtx.currentActionIndex == txProcessingCtx.currentActionNumer ? "Sign" : "Accept");
-        strcpy((char *)confirm_text2, txProcessingCtx.currentActionIndex == txProcessingCtx.currentActionNumer ? "transaction" : "and review next");
+        strcpy((char *)confirm_text2, txProcessingCtx.currentActionIndex == txProcessingCtx.currentActionNumer ? "transaction" : "& review next");
         
         ux_flow_init(0, ux_single_action_sign_flow, NULL);
 

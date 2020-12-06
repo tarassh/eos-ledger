@@ -43,8 +43,7 @@ pathSize = len(donglePath) // 4
 with open(args.file) as f:
     obj = json.load(f)
     tx = Transaction.parse(obj)
-    # tx_raw = tx.encode()
-    tx_chunks = tx.encode()
+    tx_chunks = tx.encode2()
 
     first = True
     dongle = getDongle(True)
@@ -52,7 +51,7 @@ with open(args.file) as f:
 
         offset = 0
         singSize = len(tx_chunk)
-        sliceSize = 121
+        sliceSize = 150
         while offset != singSize:
             if singSize - offset > sliceSize:
                 transport_chunk = tx_chunk[offset: offset + sliceSize]

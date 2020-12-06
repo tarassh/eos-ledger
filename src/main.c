@@ -389,11 +389,9 @@ void ux_single_action_sign_flow_ok_pressed()
     case STREAM_ACTION_READY:
         ux_step = 0;
         ux_step_count = txContent.argumentCount;
-        if (txProcessingCtx.currentActionNumer > 1) {
-            snprintf((char *)confirmLabel, sizeof(confirmLabel), "Action #%d", txProcessingCtx.currentActionIndex);
-        }
+        snprintf((char *)confirmLabel, sizeof(confirmLabel), "Action #%d", txProcessingCtx.currentActionIndex);
         strcpy((char *)confirm_text1, txProcessingCtx.currentActionIndex == txProcessingCtx.currentActionNumer ? "Sign" : "Accept");
-        strcpy((char *)confirm_text2, txProcessingCtx.currentActionIndex == txProcessingCtx.currentActionNumer ? "transaction" : "and review next");
+        strcpy((char *)confirm_text2, txProcessingCtx.currentActionIndex == txProcessingCtx.currentActionNumer ? "transaction" : "& review next");
 
         ux_flow_init(0, ux_single_action_sign_flow, NULL);
         break;
@@ -467,8 +465,12 @@ void ux_multiple_action_sign_flow_ok_pressed()
     case STREAM_ACTION_READY:
         ux_step = 0;
         ux_step_count = txContent.argumentCount;
-        // TODO: proper redisplya
-        // UX_REDISPLAY();
+        snprintf((char *)confirmLabel, sizeof(confirmLabel), "Action #%d", txProcessingCtx.currentActionIndex);
+        strcpy((char *)confirm_text1, txProcessingCtx.currentActionIndex == txProcessingCtx.currentActionNumer ? "Sign" : "Accept");
+        strcpy((char *)confirm_text2, txProcessingCtx.currentActionIndex == txProcessingCtx.currentActionNumer ? "transaction" : "& review next");
+
+        ux_flow_init(0, ux_single_action_sign_flow, NULL);
+
         break;
     case STREAM_PROCESSING:
         io_exchange_with_code(0x9000, 0);

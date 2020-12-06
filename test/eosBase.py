@@ -26,6 +26,21 @@ import binascii
 from base58 import b58decode 
 import hashlib
 
+import sys
+sys.dont_write_bytecode = True
+
+def parse_bip32_path(path):
+    if len(path) == 0:
+        return b""
+    result = b""
+    elements = path.split('/')
+    for pathElement in elements:
+        element = pathElement.split('\'')
+        if len(element) == 1:
+            result = result + struct.pack(">I", int(element[0]))
+        else:
+            result = result + struct.pack(">I", 0x80000000 | int(element[0]))
+    return result
 
 class Action:
     def __init__(self):
@@ -375,6 +390,76 @@ class Transaction:
 
         print('Signing digest ' + sha.hexdigest())
 
+        chunks = []
+
+        encoder.start()
+        encoder.write(self.chain_id, Numbers.OctetString)
+        encoder.write(self.expiration, Numbers.OctetString)
+        encoder.write(self.ref_block_num, Numbers.OctetString)
+        encoder.write(self.ref_block_prefix, Numbers.OctetString)
+        encoder.write(self.net_usage_words, Numbers.OctetString)
+        encoder.write(self.max_cpu_usage_ms, Numbers.OctetString)
+        encoder.write(self.delay_sec, Numbers.OctetString)
+
+        encoder.write(self.ctx_free_actions_size, Numbers.OctetString)
+        encoder.write(self.actions_size, Numbers.OctetString)
+
+        chunks.append(encoder.output())
+
+        for action in self.actions:
+            encoder.start()
+
+            encoder.write(action.account, Numbers.OctetString)
+            encoder.write(action.name, Numbers.OctetString)
+            encoder.write(action.auth_size, Numbers.OctetString)
+            for auth in action.auth:
+                (auth_actor, permission) = auth
+                encoder.write(auth_actor, Numbers.OctetString)
+                encoder.write(permission, Numbers.OctetString)
+            encoder.write(action.data_size, Numbers.OctetString)
+            encoder.write(action.data, Numbers.OctetString)
+
+            chunks.append(encoder.output())
+
+        encoder.start()
+
+        encoder.write(self.tx_ext, Numbers.OctetString)
+        encoder.write(self.cfd, Numbers.OctetString)
+
+        chunks.append(encoder.output())
+
+        return chunks
+
+
+    def encode2(self):
+        encoder = Encoder()
+        sha = hashlib.sha256()
+
+        sha.update(self.chain_id)
+        sha.update(self.expiration)
+        sha.update(self.ref_block_num)
+        sha.update(self.ref_block_prefix)
+        sha.update(self.net_usage_words)
+        sha.update(self.max_cpu_usage_ms)
+        sha.update(self.delay_sec)
+        sha.update(self.ctx_free_actions_size)
+        sha.update(self.actions_size)
+        for action in self.actions:
+            sha.update(action.account)
+            sha.update(action.name)
+            sha.update(action.auth_size)
+            for auth in action.auth:
+                (auth_actor, permission) = auth
+                sha.update(auth_actor)
+                sha.update(permission)
+
+            sha.update(action.data_size)
+            sha.update(action.data)
+        sha.update(self.tx_ext)
+        sha.update(self.cfd)
+
+        print('Signing digest ' + sha.hexdigest())
+
         encoder.start()
         encoder.write(self.chain_id, Numbers.OctetString)
         encoder.write(self.expiration, Numbers.OctetString)
@@ -399,4 +484,4 @@ class Transaction:
         encoder.write(self.tx_ext, Numbers.OctetString)
         encoder.write(self.cfd, Numbers.OctetString)
 
-        return encoder.output()
+        return [encoder.output()]

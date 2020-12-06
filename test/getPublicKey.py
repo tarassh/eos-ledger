@@ -25,20 +25,7 @@ import struct
 from base58 import b58encode
 import hashlib
 import binascii
-
-
-def parse_bip32_path(path):
-    if len(path) == 0:
-        return b""
-    result = b""
-    elements = path.split('/')
-    for pathElement in elements:
-        element = pathElement.split('\'')
-        if len(element) == 1:
-            result = result + struct.pack(">I", int(element[0]))
-        else:
-            result = result + struct.pack(">I", 0x80000000 | int(element[0]))
-    return result
+from eosBase import parse_bip32_path
 
 
 parser = argparse.ArgumentParser()

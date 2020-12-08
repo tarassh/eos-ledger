@@ -6,3 +6,4 @@ src/glyphs.c
 src/glyphs.h
 .vscode
 .idea
+*.pyc

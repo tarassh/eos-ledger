@@ -21,23 +21,9 @@
 import binascii
 import json
 import struct
-from eosBase import Transaction
+from eosBase import Transaction, parse_bip32_path
 from ledgerblue.comm import getDongle
 import argparse
-
-
-def parse_bip32_path(path):
-    if len(path) == 0:
-        return ""
-    result = ""
-    elements = path.split('/')
-    for pathElement in elements:
-        element = pathElement.split('\'')
-        if len(element) == 1:
-            result = result + struct.pack(">I", int(element[0]))
-        else:
-            result = result + struct.pack(">I", 0x80000000 | int(element[0]))
-    return result
 
 
 parser = argparse.ArgumentParser()
@@ -52,33 +38,34 @@ if args.file is None:
     args.file = 'transaction.json'
 
 donglePath = parse_bip32_path(args.path)
-pathSize = len(donglePath) / 4
+pathSize = len(donglePath) // 4
 
-with file(args.file) as f:
+with open(args.file) as f:
     obj = json.load(f)
     tx = Transaction.parse(obj)
-    tx_raw = tx.encode()
-    signData = tx_raw
-    print binascii.hexlify(tx_raw)
+    tx_chunks = tx.encode2()
 
-    dongle = getDongle(True)
-    offset = 0
     first = True
-    singSize = len(signData)
-    while offset != singSize:
-        if singSize - offset > 200:
-            chunk = signData[offset: offset + 200]
-        else:
-            chunk = signData[offset:]
+    dongle = getDongle(True)
+    for tx_chunk in tx_chunks:
 
-        if first:
-            totalSize = len(donglePath) + 1 + len(chunk)
-            apdu = "D4040000".decode('hex') + chr(totalSize) + chr(pathSize) + donglePath + chunk
-            first = False
-        else:
-            totalSize = len(chunk)
-            apdu = "D4048000".decode('hex') + chr(totalSize) + chunk
+        offset = 0
+        singSize = len(tx_chunk)
+        sliceSize = 150
+        while offset != singSize:
+            if singSize - offset > sliceSize:
+                transport_chunk = tx_chunk[offset: offset + sliceSize]
+            else:
+                transport_chunk = tx_chunk[offset:]
 
-        offset += len(chunk)
-        result = dongle.exchange(bytes(apdu))
-        print binascii.hexlify(result)
+            if first:
+                totalSize = len(donglePath) + 1 + len(transport_chunk)
+                apdu = bytearray.fromhex("D4040000") + bytes([totalSize, pathSize]) + donglePath + transport_chunk
+                first = False
+            else:
+                totalSize = len(transport_chunk)
+                apdu = bytearray.fromhex("D4048000") + bytes([totalSize]) + transport_chunk
+
+            offset += len(transport_chunk)
+            result = dongle.exchange(bytes(apdu))
+            print(binascii.hexlify(result))

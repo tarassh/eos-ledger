@@ -116,7 +116,6 @@ UX_STEP_NOCB(
     ux_idle_flow_1_step,
     nn, //pnn,
     {
-      "", //&C_icon_dashboard,
       "Application",
       "is ready",
     });

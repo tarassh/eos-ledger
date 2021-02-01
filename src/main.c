@@ -24,7 +24,7 @@
 #include "eos_utils.h"
 #include "eos_stream.h"
 
-#include "glyphs.h"
+#include "ux.h"
 
 unsigned char G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
 

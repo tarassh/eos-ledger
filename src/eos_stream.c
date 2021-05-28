@@ -133,34 +133,57 @@ static void processEosioVoteProducer(txProcessingContext_t *context) {
     context->content->argumentCount += totalProducers;
 }
 
+static inline void eos_assert(x) {
+    if (x) {
+        THROW(STREAM_FAULT);
+    }
+}
+
 static void processEosioUpdateAuth(txProcessingContext_t *context) {
     uint32_t bufferLength = context->currentActionDataBufferLength;
     uint8_t *buffer = context->actionDataBuffer;
 
     context->content->argumentCount = 4;
 
-    buffer += 3 * sizeof(name_t) + sizeof(uint32_t);
-    bufferLength -= 3 * sizeof(name_t) + sizeof(uint32_t);
+    uint32_t offset_update = 3 * sizeof(name_t) + sizeof(uint32_t);
+    eos_assert(__builtin_add_overflow(*buffer, offset_update, buffer));
+    eos_assert(__builtin_sub_overflow(bufferLength, offset_update, &bufferLength));
 
     uint32_t totalKeys = 0;
     uint32_t read = unpack_variant32(buffer, bufferLength, &totalKeys);
-    context->content->argumentCount += totalKeys * 2;
 
     // keys data begins here
-    buffer += read; bufferLength -= read;
-    buffer += (1 + sizeof(public_key_t) + sizeof(uint16_t)) * totalKeys;
+    eos_assert(__builtin_add_overflow(*buffer, read, buffer)); // buffer += read
+    eos_assert(__builtin_sub_overflow(bufferLength, read, &bufferLength)); // bufferLength -= read
+
+    offset_update = 1 + sizeof(public_key_t) + sizeof(uint16_t);
+    eos_assert(__builtin_mul_overflow(offset_update, totalKeys, &offset_update));
+    eos_assert(__builtin_add_overflow(*buffer, offset_update, buffer));
+    eos_assert(__builtin_sub_overflow(bufferLength, offset_update, &bufferLength));
+
+    eos_assert(__builtin_add_overflow(totalKeys, totalKeys, &totalKeys));  // totalKeys *= 2
+    eos_assert(__builtin_add_overflow(context->content->argumentCount, totalKeys, &context->content->argumentCount));
 
     uint32_t totalAccounts = 0;
     read = unpack_variant32(buffer, bufferLength, &totalAccounts);
-    context->content->argumentCount += totalAccounts * 2;
 
     // accounts data begins here
-    buffer += read; bufferLength -= read;
-    buffer += (sizeof(permisssion_level_t) + sizeof(uint16_t)) * totalAccounts;
+    eos_assert(__builtin_add_overflow(*buffer, read, buffer));
+    eos_assert(__builtin_sub_overflow(bufferLength, read, &bufferLength));
+
+    offset_update = sizeof(permisssion_level_t) + sizeof(uint16_t);
+    eos_assert(__builtin_mul_overflow(offset_update, totalAccounts, &offset_update));
+    eos_assert(__builtin_add_overflow(*buffer, offset_update, buffer));
+    eos_assert(__builtin_sub_overflow(bufferLength, offset_update, &bufferLength));
+
+    eos_assert(__builtin_add_overflow(totalAccounts, totalAccounts, &totalAccounts)); // totalAccounts *= 2
+    eos_assert(__builtin_add_overflow(context->content->argumentCount, totalAccounts, &context->content->argumentCount));
 
     uint32_t totalWaits = 0;
     read = unpack_variant32(buffer, bufferLength, &totalWaits);
-    context->content->argumentCount += totalWaits * 2; 
+
+    eos_assert(__builtin_add_overflow(totalWaits, totalWaits, &totalWaits)); // totalWaits *= 2
+    eos_assert(__builtin_add_overflow(context->content->argumentCount, totalWaits, &context->content->argumentCount));
 }
 
 static void processEosioDeleteAuth(txProcessingContext_t *context) {

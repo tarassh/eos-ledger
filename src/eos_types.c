@@ -30,7 +30,7 @@ name_t buffer_to_name_type(uint8_t *in, uint32_t size) {
     }
 
     name_t value;
-    os_memmove(&value, in, 8);
+    memcpy(&value, in, 8);
 
     return value;
 }
@@ -55,7 +55,7 @@ uint8_t name_to_string(name_t value, char *out, uint32_t size) {
         actual_size--;
     }
 
-    os_memmove(out, str, actual_size);
+    memcpy(out, str, actual_size);
     return actual_size;
 }
 
@@ -108,7 +108,7 @@ uint8_t symbol_to_string(symbol_t sym, char *out, uint32_t size) {
         sym >>= 8;
     }
 
-    os_memmove(out, tmp, i);
+    memcpy(out, tmp, i);
     return i;
 }
 
@@ -134,21 +134,21 @@ uint8_t asset_to_string(asset_t *asset, char *out, uint32_t size) {
         change /= 10;
     }
     char symbol[9];
-    os_memset(symbol, 0, sizeof(symbol));
+    memset(symbol, 0, sizeof(symbol));
     symbol_to_string(asset->symbol, symbol, 8);
 
     char tmp[64];
-    os_memset(tmp, 0, sizeof(tmp));
+    memset(tmp, 0, sizeof(tmp));
     i64toa(asset->amount / p10, tmp);
     uint32_t assetTextLength = strlen(tmp);
     tmp[assetTextLength++] = '.';
-    os_memmove(tmp + assetTextLength, fraction, strlen(fraction));
+    memcpy(tmp + assetTextLength, fraction, strlen(fraction));
     assetTextLength = strlen(tmp);
     tmp[assetTextLength++] = ' ';
-    os_memmove(tmp + assetTextLength, symbol, strlen(symbol));
+    memcpy(tmp + assetTextLength, symbol, strlen(symbol));
     assetTextLength = strlen(tmp);
     
-    os_memmove(out, tmp, assetTextLength);
+    memcpy(out, tmp, assetTextLength);
 
     return assetTextLength;
 }
@@ -177,7 +177,7 @@ uint32_t public_key_to_wif(uint8_t *publicKey, uint32_t keyLength, char *out, ui
     uint8_t temp[33];
     // is even?
     temp[0] = (publicKey[64] & 0x1) ? 0x03 : 0x02;
-    os_memmove(temp + 1, publicKey + 1, 32);
+    memcpy(temp + 1, publicKey + 1, 32);
     return compressed_public_key_to_wif(temp, sizeof(temp), out, outLength);
 }
 
@@ -190,16 +190,16 @@ uint32_t compressed_public_key_to_wif(uint8_t *publicKey, uint32_t keyLength, ch
     }
     
     uint8_t temp[37];
-    os_memset(temp, 0, sizeof(temp));
-    os_memmove(temp, publicKey, 33);
+    memset(temp, 0, sizeof(temp));
+    memcpy(temp, publicKey, 33);
     
     uint8_t check[20];
     cx_ripemd160_t riprip;
     cx_ripemd160_init(&riprip);
     cx_hash(&riprip.header, CX_LAST, temp, 33, check, sizeof(check));
-    os_memmove(temp + 33, check, 4);
+    memcpy(temp + 33, check, 4);
     
-    os_memset(out, 0, outLength);
+    memset(out, 0, outLength);
     out[0] = 'E';
     out[1] = 'O';
     out[2] = 'S';

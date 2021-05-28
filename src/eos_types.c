@@ -155,12 +155,16 @@ uint8_t asset_to_string(asset_t *asset, char *out, uint32_t size) {
 
 uint32_t unpack_variant32(uint8_t *in, uint32_t length, variant32_t *value) {
     uint32_t i = 0;
-    uint64_t v = 0; char b = 0; uint8_t by = 0;
+    uint64_t v = 0; 
+    char b = 0; 
+    uint8_t by = 0;
     do {
-        b = *in; ++in; ++i;
+        b = *in; 
+        ++in; 
+        ++i;
         v |= (uint32_t)((uint8_t)b & 0x7f) << by;
         by += 7;
-    } while( ((uint8_t)b) & 0x80 && by < 32 );
+    } while( (((uint8_t)b) & 0x80) && (by < 32) && (i < length));
     
     *value = v;
     return i;

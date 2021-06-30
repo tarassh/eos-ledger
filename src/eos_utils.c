@@ -17,9 +17,7 @@
 #include <string.h> 
 #include "eos_utils.h"
 #include "os.h"
-#ifdef TARGET_NANOS
-#include "lcx_hmac.h"
-#endif
+#include "cx.h"
 
 
 unsigned char const BASE58ALPHABET[] = {

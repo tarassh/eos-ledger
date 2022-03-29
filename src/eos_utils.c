@@ -223,7 +223,7 @@ int ecdsa_der_to_sig(const uint8_t *der, uint8_t *sig)
     {
         sig[delta++] = 0;
     }
-    memcpy(sig + delta, der + offset, length);
+    memmove(sig + delta, der + offset, length);
 
     delta = 0;
     offset += length;
@@ -245,7 +245,7 @@ int ecdsa_der_to_sig(const uint8_t *der, uint8_t *sig)
     {
         sig[32 + delta++] = 0;
     }
-    memcpy(sig + 32 + delta, der + offset, length);
+    memmove(sig + 32 + delta, der + offset, length);
 
     return 1;
 }
@@ -326,7 +326,7 @@ void rng_rfc6979(unsigned char *rnd,
             }
             cx_hmac_sha256_init(&hmac, K, 32);
             cx_hmac((cx_hmac_t *)&hmac, CX_LAST, V, h_len, V, 32);
-            memcpy(rnd + offset, V, h_len);
+            memmove(rnd + offset, V, h_len);
             x_len -= h_len;
         }
 

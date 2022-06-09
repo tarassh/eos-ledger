@@ -90,7 +90,6 @@ static void processEosioDelegate(txProcessingContext_t *context) {
     uint8_t *buffer = context->actionDataBuffer;
 
     buffer += 2 * sizeof(name_t) + 2 * sizeof(asset_t);
-    bufferLength -= 2 * sizeof(name_t) + 2 * sizeof(asset_t);
 
     if (buffer[0] != 0) {
         context->content->argumentCount += 1;
@@ -187,7 +186,7 @@ static void processEosioUpdateAuth(txProcessingContext_t *context) {
     eos_assert(!__builtin_add_overflow(context->content->argumentCount, totalAccounts, &context->content->argumentCount));
 
     uint32_t totalWaits = 0;
-    read = unpack_variant32(buffer, bufferLength, &totalWaits);
+    unpack_variant32(buffer, bufferLength, &totalWaits);
 
     eos_assert(!__builtin_add_overflow(totalWaits, totalWaits, &totalWaits)); // totalWaits *= 2
     eos_assert(!__builtin_add_overflow(context->content->argumentCount, totalWaits, &context->content->argumentCount));
@@ -294,7 +293,6 @@ static void processEosioNewAccountAction(txProcessingContext_t *context) {
         PRINTF("No delays allowed");
         THROW(EXCEPTION);
     }
-    buffer += read; bufferLength -= read;
     
     context->content->argumentCount = 4;
 }

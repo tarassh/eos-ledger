@@ -113,6 +113,7 @@ uint8_t symbol_to_string(symbol_t sym, char *out, uint32_t size) {
 }
 
 uint8_t asset_to_string(asset_t *asset, char *out, uint32_t size) {
+    UNUSED(size);
     if (asset == NULL) {
         THROW(INVALID_PARAMETER);
     }

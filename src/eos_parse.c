@@ -199,9 +199,6 @@ void parseStringField(uint8_t *in, uint32_t inLength, const char fieldName[], ac
 
     memmove(arg->data, in, fieldLength);
 
-    in += fieldLength;
-    inLength -= fieldLength;
-
     *read = readFromBuffer + fieldLength;
     *written = fieldLength;
 }

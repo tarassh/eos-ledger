@@ -582,17 +582,17 @@ uint32_t get_public_key_and_set_result()
 {
     uint32_t tx = 0;
     G_io_apdu_buffer[tx++] = 65;
-    memcpy(G_io_apdu_buffer + tx, tmpCtx.publicKeyContext.publicKey.W, 65);
+    memmove(G_io_apdu_buffer + tx, tmpCtx.publicKeyContext.publicKey.W, 65);
     tx += 65;
 
     uint32_t addressLength = strlen(tmpCtx.publicKeyContext.address);
 
     G_io_apdu_buffer[tx++] = addressLength;
-    memcpy(G_io_apdu_buffer + tx, tmpCtx.publicKeyContext.address, addressLength);
+    memmove(G_io_apdu_buffer + tx, tmpCtx.publicKeyContext.address, addressLength);
     tx += addressLength;
     if (tmpCtx.publicKeyContext.getChaincode)
     {
-        memcpy(G_io_apdu_buffer + tx, tmpCtx.publicKeyContext.chainCode, 32);
+        memmove(G_io_apdu_buffer + tx, tmpCtx.publicKeyContext.chainCode, 32);
         tx += 32;
     }
     return tx;
